@@ -1,0 +1,213 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebaseConfig";
+
+
+import TournamentsSection from "./sections/TournamentsSection";
+import TournamentCoffersSection from "./sections/TournamentCoffersSection";
+import UsersSection from "./sections/UsersSection";
+import PaymentsSection from "./sections/PaymentsSection";
+import PayoutsSection from "./sections/PayoutsSection";
+import TournamentPayoutSection from "./sections/TournamentPayoutSection";
+import TreasurySection from "./sections/TreasurySection";
+import NotificationsSection from "./sections/NotificationsSection";
+import SettingsSection from "./sections/SettingsSection";
+import LogsAndActivitySection from "./sections/LogsAndActivitySection";
+import SystemControlSection from "./sections/SystemControlSection";
+
+const SECTIONS = [
+  "Tournaments",
+  "Tournament Coffers",
+  "Users",
+  "Payments",
+  "Payouts",
+  "Tournament Payouts",
+  "Logs & Activity",
+  "System Control",
+  "Treasury",
+  "Notifications",
+  "Settings",
+];
+
+export default function AdminDashboard() {
+  const [active, setActive] = useState("Treasury");
+  const [exiting, setExiting] = useState(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+  const checkAdmin = async () => {
+    const user = auth.currentUser;
+
+    if (!user) {
+      router.replace("/admin/login");
+      return;
+    }
+
+    const token = await user.getIdTokenResult();
+
+    if (!token.claims.admin) {
+      router.replace("/admin/login");
+    }
+  };
+
+  checkAdmin();
+}, [router]);
+
+  // rest of your file continues unchanged...
+
+  const renderSection = () => {
+    switch (active) {
+      case "Tournaments":
+        return <TournamentsSection />;
+
+      case "Tournament Coffers":
+        return <TournamentCoffersSection />;
+
+      case "Users":
+        return <UsersSection />;
+
+      case "Payments":
+        return <PaymentsSection />;
+
+      case "Payouts":
+        return <PayoutsSection />;
+
+      case "Tournament Payouts":
+        return <TournamentPayoutSection />;
+
+      case "Treasury":
+        return <TreasurySection />;
+
+      case "Notifications":
+        return <NotificationsSection />;
+
+      case "Settings":
+        return <SettingsSection />;
+
+      case "Logs & Activity":
+        return <LogsAndActivitySection />;
+
+      case "System Control":
+        return <SystemControlSection />;
+
+      default:
+        return <TreasurySection />;
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      {/* SIDEBAR */}
+      <div style={styles.sidebar}>
+        <div style={styles.scroll}>
+          {SECTIONS.map((sec) => (
+            <div
+              key={sec}
+              onClick={() => setActive(sec)}
+              style={{
+                ...styles.item,
+                ...(active === sec ? styles.activeItem : {}),
+              }}
+            >
+              {sec}
+            </div>
+          ))}
+
+          {/* EXIT BUTTON */}
+          <button
+            disabled={exiting}
+            onClick={async () => {
+              if (exiting) return;
+
+              setExiting(true);
+
+              try {
+                localStorage.removeItem("isAdmin");
+
+                // redirect to your app landing page
+                window.location.href = "/tradinglayout";
+              } catch  {
+                alert("Exit failed");
+                setExiting(false);
+              }
+            }}
+            style={{
+              ...styles.exitBtn,
+              opacity: exiting ? 0.6 : 1,
+            }}
+          >
+            {exiting ? "Exiting..." : "Exit Admin"}
+          </button>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div style={styles.main}>
+        <div style={styles.content}>{renderSection()}</div>
+      </div>
+    </div>
+  );
+}
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    display: "flex",
+    height: "100vh",
+    background: "#000",
+  },
+
+  /* SIDEBAR */
+  sidebar: {
+    width: 260,
+    background: "#111",
+    borderRight: "1px solid #222",
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  scroll: {
+    overflowY: "auto",
+    padding: 12,
+  },
+
+  item: {
+    padding: "12px 10px",
+    marginBottom: 6,
+    color: "#fff",
+    cursor: "pointer",
+    borderRadius: 6,
+    fontSize: 14,
+  },
+
+  activeItem: {
+    background: "#333",
+    borderLeft: "3px solid #4A90E2",
+  },
+
+  exitBtn: {
+    marginTop: 20,
+    width: "100%",
+    padding: 12,
+    background: "#ff4d67",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontWeight: "bold",
+  },
+
+  /* MAIN */
+  main: {
+    flex: 1,
+    overflow: "hidden",
+  },
+
+  content: {
+    padding: 16,
+    height: "100%",
+    overflowY: "auto",
+  },
+};
