@@ -15,9 +15,7 @@ export default function SystemControlSection() {
   const [pendingTxs, setPendingTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const API = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
-  
+ const API = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
   const toggleFreeze = async () => {
     try {

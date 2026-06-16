@@ -32,7 +32,7 @@ type TournamentDoc = Omit<Tournament, "id">;
 type ParticipantDoc = Omit<Participant, "id">;
 
 export default function TournamentPayoutSection() {
-  const API = process.env.NEXT_PUBLIC_BACKEND_URL as string;
+ const API = process.env.NEXT_PUBLIC_API_BASE_URL as string; 
 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] =
@@ -115,10 +115,11 @@ export default function TournamentPayoutSection() {
         }
       );
 
-      const data = await res.json();
+   const text = await res.text();
+console.log("PAYOUT RESPONSE:", text);
 
       if (!res.ok) {
-        throw new Error(data.error || "Payout failed");
+        throw new Error(text || "Payout failed");
       }
 
       alert("Tournament payout completed");

@@ -137,7 +137,7 @@ const [participants, setParticipants] = useState<Participant[]>([]);
 
   const q = query(
     collection(db, "tournaments", selectedTournament.id, "participants"),
-    orderBy("balance", "desc")
+   orderBy("performance", "desc")
   );
 
   const unsub = onSnapshot(q, (snap) => {
@@ -168,7 +168,9 @@ const [participants, setParticipants] = useState<Participant[]>([]);
       const prize = Number(formPrize);
       const entry = Number(formEntryFee);
       const rebuy =
-        formRebuyFee.trim() === "" ? entry : Number(formRebuyFee);
+  formRebuyFee.trim() === ""
+    ? entry
+    : Math.max(0, Number(formRebuyFee));
 
       const duration = Number(formDuration);
 
@@ -179,11 +181,53 @@ const [participants, setParticipants] = useState<Participant[]>([]);
 
       const endTime = startTime + duration * 60000;
 
+// ---------- VALIDATION BLOCK ----------
+if (!formName.trim()) {
+  alert("Tournament name is required");
+  setSaving(false);
+  return;
+}
+
+if (sb <= 0) {
+  alert("Starting balance must be greater than 0");
+  setSaving(false);
+  return;
+}
+
+if (entry < 0) {
+  alert("Entry fee cannot be negative");
+  setSaving(false);
+  return;
+}
+
+if (rebuy < 0 || isNaN(rebuy)) {
+  alert("Invalid rebuy fee");
+  setSaving(false);
+  return;
+}
+
+if (duration <= 0) {
+  alert("Duration must be greater than 0");
+  setSaving(false);
+  return;
+}
+
+if (!Array.isArray(payouts) || payouts.length === 0) {
+  alert("Add at least one payout winner");
+  setSaving(false);
+  return;
+}
+const safePayouts = payouts
+  .sort((a, b) => a.rank - b.rank)
+  .map(p => ({
+    rank: Number(p.rank),
+    amount: Math.max(0, Number(p.amount)),
+  }));
       const data = {
         name: formName,
         startingBalance: sb,
         prizePool: prize,
-        payoutStructure: payouts,
+       payoutStructure: safePayouts,
         entryFee: entry,
         rebuyFee: rebuy,
         durationMinutes: duration,
@@ -192,7 +236,7 @@ const [participants, setParticipants] = useState<Participant[]>([]);
         onRegisterInfo: formOnRegisterInfo,
         startTime,
         endTime,
-        status: computeStatus(startTime, endTime),
+        status: "live", // ✅ ADD THIS
         createdAt: serverTimestamp(),
       };
 

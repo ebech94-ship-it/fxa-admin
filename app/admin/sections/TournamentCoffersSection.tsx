@@ -22,8 +22,7 @@ export default function TournamentCoffersSection() {
   const [coffers, setCoffers] = useState<TournamentCoffer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const API = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
+const API = process.env.NEXT_PUBLIC_API_BASE_URL as string;
 
   useEffect(() => {
   const fetchCoffers = async () => {

@@ -54,22 +54,18 @@ export default function TreasuryPage() {
         const token = await getToken();
         if (!token) return;
 
-        const treasuryRes = await fetch(
-          `${API_BASE}/api/treasury/balances`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+       const [treasuryRes, txRes] = await Promise.all([
+  fetch(`${API_BASE}/api/treasury/balances`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }),
+  fetch(`${API_BASE}/admin/transactions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }),
+]);
 
-        const treasuryData: TreasuryData = await treasuryRes.json();
-        setTreasury(treasuryData);
-
-        const txRes = await fetch(`${API_BASE}/admin/transactions`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const txData: Transaction[] = await txRes.json();
-
+const treasuryData = await treasuryRes.json();
+const txData = await txRes.json();
+setTreasury(treasuryData);
         setTransactions(txData || []);
         setDisplayedTx((txData || []).slice(0, 10));
       } catch (e) {
