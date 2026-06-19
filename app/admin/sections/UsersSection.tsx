@@ -49,17 +49,22 @@ export default function UsersPage() {
     const unsub = onSnapshot(q, (snap) => {
       const list: AdminUser[] = snap.docs.map((d) => {
         const data = d.data() as {
-          email?: string;
-          balance?: number;
-          frozen?: boolean;
-          joinedTournaments?: unknown[];
-          createdAt?: unknown;
-        };
+  email?: string;
+  frozen?: boolean;
+  joinedTournaments?: unknown[];
+  createdAt?: unknown;
+  accounts?: {
+    real?: {
+      balance?: number;
+    };
+  };
+};
 
         return {
           id: d.id,
           email: data.email ?? "",
-          balance: data.balance ?? 0,
+          balance:
+  data.accounts?.real?.balance ?? 0,
           frozen: data.frozen ?? false,
           joinedTournaments: data.joinedTournaments ?? [],
           createdAt: data.createdAt,

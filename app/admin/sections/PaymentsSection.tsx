@@ -15,37 +15,48 @@ type Transaction = {
 };
 
 export default function PaymentsSection() {
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL as string;
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
  useEffect(() => {
-  const loadTransactions = async () => {
-    try {
-      const user = getAuth().currentUser;
-      if (!user) return;
+ const loadTransactions = async () => {
+  try {
+    const user = getAuth().currentUser;
+    if (!user) return;
 
-      const token = await user.getIdToken();
+    const token = await user.getIdToken();
 
-      const res = await fetch(
-        `${API_BASE}/admin/transactions?type=deposit`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+    const res = await fetch(
+      `${API_BASE}/admin/transactions?type=deposit`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-      const data: Transaction[] = await res.json();
-      setTransactions(data ?? []);
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
+    const data = await res.json();
+    console.log("RAW API RESPONSE:", data);
 
+    const list =
+      Array.isArray(data)
+        ? data
+        : Array.isArray(data?.transactions)
+        ? data.transactions
+        : Array.isArray(data?.data)
+        ? data.data
+        : [];
+
+    setTransactions(list);
+  } catch (err) {
+    console.error("Fetch error:", err);
+    setTransactions([]);
+  }
+};
   void loadTransactions();
 }, [API_BASE]);
-
+console.log("transactions =", transactions);
+console.log("type =", typeof transactions);
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>📊 Deposits Monitor</h2>

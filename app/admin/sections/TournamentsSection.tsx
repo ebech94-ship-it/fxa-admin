@@ -20,6 +20,7 @@ interface Participant {
   id: string;
   username: string;
   balance: number;
+   performance: number;
 }
 
 interface Payout {
@@ -148,6 +149,7 @@ const [participants, setParticipants] = useState<Participant[]>([]);
         id: d.id,
         username: data.username ?? "User",
         balance: Number(data.balance ?? 0),
+         performance: Number(data.performance ?? 0),
       };
     });
 
@@ -447,7 +449,8 @@ const safePayouts = payouts
     ) : (
       participants.map((p, i) => (
         <div key={p.id}>
-          #{i + 1} {p.username} — {p.balance}
+          #{i + 1} {p.username}
+— {p.performance.toFixed(2)}%
         </div>
       ))
     )}

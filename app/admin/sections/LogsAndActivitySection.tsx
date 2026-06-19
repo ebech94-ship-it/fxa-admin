@@ -19,8 +19,7 @@ type Activity = {
 type LogOrActivity = Log | Activity;
 
 export default function LogsAndActivitySection() {
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL as string;
   const [tab, setTab] = useState<"logs" | "activity">("logs");
   const [logs, setLogs] = useState<Log[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);

@@ -32,8 +32,7 @@ const statusColor = (status: Payout["status"]) => {
 };
 
 export default function PayoutsSection() {
-  const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL as string;
-
+ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL as string;
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const auth = getAuth();
 

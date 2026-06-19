@@ -5,7 +5,7 @@ import {
   collection,
   onSnapshot,
   orderBy,
-  query,
+  query,doc, getDoc
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../../lib/firebaseConfig";
@@ -23,7 +23,8 @@ interface Participant {
   id: string;
   username?: string;
   email?: string;
-  balance: number;
+  phone?: string;
+  balance?: number;
   performance?: number;
 }
 
@@ -61,29 +62,40 @@ export default function TournamentPayoutSection() {
 
   // 🔹 Load participants
   useEffect(() => {
-    if (!selectedTournament) return;
+  if (!selectedTournament) return;
 
-    const q = query(
-      collection(
-        db,
-        "tournaments",
-        selectedTournament.id,
-        "participants"
-      ),
-      orderBy("performance", "desc")
-    );
+  const q = query(
+    collection(db, "tournaments", selectedTournament.id, "participants"),
+    orderBy("performance", "desc")
+  );
 
-    const unsub = onSnapshot(q, (snap) => {
-      const list: Participant[] = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as ParticipantDoc),
-      }));
+  const unsub = onSnapshot(q, (snap) => {
+    const load = async () => {
+      const list: Participant[] = await Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data() as ParticipantDoc;
+
+          const userSnap = await getDoc(doc(db, "users", d.id));
+          const userData = userSnap.exists() ? userSnap.data() : null;
+
+          return {
+            id: d.id,
+            ...data,
+            email: userData?.email,
+            phone: userData?.phone,
+            balance: userData?.balance,
+          };
+        })
+      );
 
       setParticipants(list);
-    });
+    };
 
-    return () => unsub();
-  }, [selectedTournament]);
+    load(); // 👈 run async function safely
+  });
+
+  return () => unsub();
+}, [selectedTournament]);
 
   const processFullPayout = async () => {
     if (!selectedTournament) return;
@@ -215,14 +227,27 @@ console.log("PAYOUT RESPONSE:", text);
 
             return (
               <div key={p.id} style={styles.row}>
-                <div style={styles.rank}>#{rank}</div>
-                <div style={styles.user}>
-                  {p.username || p.email}
-                </div>
-                <div style={styles.amount}>
-                  {payout.amount} $
-                </div>
-              </div>
+  <div style={styles.rank}>#{rank}</div>
+
+  <div style={styles.user}>
+    {p.username}
+    <div style={{ fontSize: 11, color: "#888" }}>
+      {p.phone}
+    </div>
+  </div>
+
+  <div style={{ width: 200, color: "#bbb" }}>
+    {p.email}
+  </div>
+
+  <div style={{ width: 160, color: "#00d4ff", fontWeight: 700 }}>
+    End: {p.performance ?? 0}
+  </div>
+
+  <div style={styles.amount}>
+    {payout.amount} $
+  </div>
+</div>
             );
           })}
         </div>
