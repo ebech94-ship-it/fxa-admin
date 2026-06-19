@@ -120,6 +120,19 @@ export default function LogsAndActivitySection() {
         <div style={styles.error}>{error}</div>
       ) : (
         <div>
+        {data.length === 0 && (
+  <div
+    style={{
+      textAlign: "center",
+      color: "#9ca3af",
+      padding: 30,
+    }}
+  >
+    {tab === "logs"
+      ? "No system logs yet."
+      : "No admin activity yet."}
+  </div>
+)}
           {data.map((item, index) => (
             <div key={item.id} style={styles.row}>
               <div style={styles.index}>
