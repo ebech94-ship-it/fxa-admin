@@ -8,7 +8,7 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
+ 
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../lib/firebaseConfig";
@@ -239,13 +239,13 @@ const safePayouts = payouts
         startTime,
         endTime,
         status: "live", // ✅ ADD THIS
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       };
 
       if (editing && selectedTournament) {
         await updateDoc(doc(db, "tournaments", selectedTournament.id), {
           ...data,
-          updatedAt: serverTimestamp(),
+          updatedAt: new Date().toISOString(),
         });
       } else {
         await addDoc(collection(db, "tournaments"), data);

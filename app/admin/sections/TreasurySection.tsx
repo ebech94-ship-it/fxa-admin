@@ -16,6 +16,15 @@ interface Transaction {
   amount: number;
   createdAt?: string | number | Date | null;
 }
+ type FirestoreTimestamp = {
+  seconds?: number;
+  _seconds?: number;
+  nanoseconds?: number;
+  _nanoseconds?: number;
+};
+
+type DateInput = string | number | Date | FirestoreTimestamp | null | undefined;
+
 
 type Styles = Record<string, React.CSSProperties>;
 
@@ -107,6 +116,31 @@ setTreasury(treasuryData);
       </div>
     );
   }
+ 
+const formatDate = (dateValue: DateInput): string => {
+  if (!dateValue) return "No date";
+
+  try {
+    // Firestore  formats
+    if (typeof dateValue === "object" && "seconds" in dateValue && dateValue.seconds) {
+      return new Date(dateValue.seconds * 1000).toLocaleString();
+    }
+
+    if (typeof dateValue === "object" && "_seconds" in dateValue && dateValue._seconds) {
+      return new Date(dateValue._seconds * 1000).toLocaleString();
+    }
+
+const d = new Date(dateValue as string | number | Date);
+
+    if (isNaN(d.getTime())) {
+      return "Invalid date";
+    }
+
+    return d.toLocaleString();
+  } catch {
+    return "Invalid date";
+  }
+};
 
   return (
     <div style={styles.container}>
@@ -168,10 +202,8 @@ setTreasury(treasuryData);
               <div style={styles.colUser}>{tx.username || "Unknown"}</div>
               <div style={styles.colAmount}>${tx.amount}</div>
               <div style={styles.colDate}>
-                {tx.createdAt
-                  ? new Date(tx.createdAt).toLocaleString()
-                  : "No date"}
-              </div>
+  {formatDate(tx.createdAt)}
+</div>
             </div>
           ))
         )}

@@ -5,7 +5,7 @@ import {
   doc,
   getDoc,
   setDoc,
-  serverTimestamp,
+  
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 
@@ -39,7 +39,7 @@ export default function SettingsSection() {
       await setDoc(doc(db, "settings", "app"), {
         enablePayouts,
         maintenanceMode,
-        updatedAt: serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       });
 
       alert("Settings updated successfully.");

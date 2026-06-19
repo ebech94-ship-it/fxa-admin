@@ -8,7 +8,7 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
+  
   updateDoc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
@@ -172,7 +172,7 @@ export default function NotificationsSection() {
 
       await updateDoc(doc(db, "supportThreads", activeThread.id), {
         lastMessage: replyText,
-        lastUpdated: serverTimestamp(),
+        lastUpdated: new Date().toISOString(),
         status: "open",
       });
 
