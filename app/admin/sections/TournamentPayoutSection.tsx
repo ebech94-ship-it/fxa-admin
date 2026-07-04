@@ -5,7 +5,7 @@ import {
   collection,
   onSnapshot,
   orderBy,
-  query,doc, getDoc
+  query,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../../lib/firebaseConfig";
@@ -14,6 +14,7 @@ interface Tournament {
   id: string;
   name?: string;
   endTime: number;
+    startingBalance?: number; 
   paidOut?: boolean;
   payoutLocked?: boolean;
   payoutStructure?: { rank: number; amount: number }[];
@@ -21,11 +22,31 @@ interface Tournament {
 
 interface Participant {
   id: string;
+
   username?: string;
+  publicId?: string;
+
   email?: string;
   phone?: string;
+
   balance?: number;
-  performance?: number;
+
+  pnl?: number;
+  roi?: number;
+  winRate?: number;
+  trades?: number;
+
+  performance?: {
+    wins?: number;
+    losses?: number;
+    pnl?: number;
+    roi?: number;
+    trades?: number;
+    winRate?: number;
+  };
+  rebuyInjectedTotal?: number;
+  prizeAmount?: number;
+  payoutStatus?: "pending" | "paid" | "processing" | "failed";
 }
 
 // 🔥 FIX: Firestore document types (no `any`)
@@ -35,30 +56,43 @@ type ParticipantDoc = Omit<Participant, "id">;
 export default function TournamentPayoutSection() {
  const API = process.env.NEXT_PUBLIC_API_BASE_URL as string; 
 
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+
   const [selectedTournament, setSelectedTournament] =
     useState<Tournament | null>(null);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+    const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
 
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   const [loadingPayout, setLoadingPayout] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+const now = useState(() => Date.now())[0];
+
+const formatNum = (value?: number, decimals = 2) => {
+  if (value === null || value === undefined || isNaN(value)) return "0.00";
+  return Number(value).toFixed(decimals);
+};
   // 🔹 Load finished tournaments
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "tournaments"), (snap) => {
-      const list: Tournament[] = snap.docs
-        .map((d) => ({
+
+useEffect(() => {
+  const unsub = onSnapshot(collection(db, "tournaments"), (snap) => {
+    const list: Tournament[] = snap.docs
+      .map((d) => {
+        const data = d.data() as TournamentDoc;
+
+        return {
           id: d.id,
-          ...(d.data() as TournamentDoc),
-        }))
-        .filter((t) => Date.now() > t.endTime);
+          ...data,
+        };
+      })
+      .filter((t) => Date.now() > t.endTime);
 
-      setTournaments(list);
-    });
+    setTournaments(list);
+  });
 
-    return () => unsub();
-  }, []);
+  return () => unsub();
+}, []);
 
   // 🔹 Load participants
   useEffect(() => {
@@ -69,30 +103,23 @@ export default function TournamentPayoutSection() {
     orderBy("performance", "desc")
   );
 
-  const unsub = onSnapshot(q, (snap) => {
-    const load = async () => {
-      const list: Participant[] = await Promise.all(
-        snap.docs.map(async (d) => {
-          const data = d.data() as ParticipantDoc;
+const unsub = onSnapshot(q, (snap) => {
+  const list: Participant[] = snap.docs.map((d) => {
+    const data = d.data() as ParticipantDoc;
 
-          const userSnap = await getDoc(doc(db, "users", d.id));
-          const userData = userSnap.exists() ? userSnap.data() : null;
-
-          return {
-            id: d.id,
-            ...data,
-            email: userData?.email,
-            phone: userData?.phone,
-            balance: userData?.balance,
-          };
-        })
-      );
-
-      setParticipants(list);
+    return {
+      id: d.id,
+      ...data,
+      balance: data.balance ?? 0,
+      pnl: data.pnl ?? data.performance?.pnl ?? 0,
+      roi: data.roi ?? data.performance?.roi ?? 0,
+      trades: data.trades ?? data.performance?.trades ?? 0,
+      winRate: data.winRate ?? data.performance?.winRate ?? 0,
     };
-
-    load(); // 👈 run async function safely
   });
+
+  setParticipants(list);
+});
 
   return () => unsub();
 }, [selectedTournament]);
@@ -150,10 +177,144 @@ console.log("PAYOUT RESPONSE:", text);
       setLoadingPayout(false);
     }
   };
+const paySingleParticipant = async (participantId: string) => {
+  if (!selectedTournament) return;
 
+  const auth = getAuth();
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("Admin not authenticated");
+    return;
+  }
+
+  try {
+    const token = await user.getIdToken();
+
+    const res = await fetch(
+      `${API}/admin/pay-participant`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tournamentId: selectedTournament.id,
+          participantId,
+        }),
+      }
+    );
+
+    const text = await res.text();
+
+    if (!res.ok) throw new Error(text);
+
+    // 🔥 optimistic UI update
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === participantId
+          ? { ...p, payoutStatus: "paid" }
+          : p
+      )
+    );
+
+    alert("Payment successful");
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Unknown error";
+
+    alert(message);
+  }
+};
   return (
+   
     <div style={styles.container}>
+      {selectedTournament && (
+  <div style={styles.activeTournamentCard}>
+    <div style={{ color: "#fff", fontWeight: 900, fontSize: 16 }}>
+      🎯 {selectedTournament.name || "Tournament"}
+    </div>
+
+    <div style={{ color: "#999", fontSize: 12 }}>
+      Status: {selectedTournament.paidOut ? "Paid" : "Pending"}
+    </div>
+
+    <div style={{ color: "#999", fontSize: 12 }}>
+      Ends: {new Date(selectedTournament.endTime).toLocaleString()}
+    </div>
+
+    <div style={{ color: "#999", fontSize: 12 }}>
+      Prize Pool:{" "}
+      {selectedTournament?.payoutStructure?.reduce((a, b) => a + b.amount, 0) ?? 0} T
+    </div>
+  </div>
+)}
+    <div style={styles.summaryGrid}>
+
+  <div style={styles.summaryCard}>
+    <div>Participants</div>
+    <strong>{participants.length}</strong>
+  </div>
+
+  <div style={styles.summaryCard}>
+    <div>Pending</div>
+    <strong>
+      {participants.filter(p => p.payoutStatus !== "paid").length}
+    </strong>
+  </div>
+
+  <div style={styles.summaryCard}>
+    <div>Paid</div>
+    <strong>
+      {participants.filter(p => p.payoutStatus === "paid").length}
+    </strong>
+  </div>
+
+  <div style={styles.summaryCard}>
+    <div>Prize Pool</div>
+    <strong>
+      {selectedTournament?.payoutStructure?.reduce((a, b) => a + b.amount, 0) ?? 0} T
+    </strong>
+  </div>
+
+  <div style={styles.summaryCard}>
+    <div>Processed</div>
+    <strong>---</strong>
+  </div>
+
+</div>
       <h2 style={styles.title}>🏆 Tournament Payouts</h2>
+    {!selectedTournament && (
+  <div style={styles.tournamentGrid}>
+  {tournaments.map((t) => (
+    <div
+      key={t.id}
+      style={{
+        ...styles.tournamentCard,
+        border:
+          (selectedTournament as Tournament | null)?.id === t.id
+            ? "1px solid #3b82f6"
+            : "none",
+      }}
+      onClick={() => setSelectedTournament(t)}
+    >
+      <div style={styles.name}>{t.name || "Tournament"}</div>
+
+      <div style={styles.small}>
+        Tournament:{" "}
+        {now < t.endTime? "🟢 Running" : "🔴 Finished"}
+      </div>
+<div style={styles.small}>
+  Status: {now < t.endTime ? "Running" : "Finished"}
+</div>
+      <div style={styles.small}>
+        Payout: {t.paidOut ? "🟢 Paid" : "🟡 Pending"}
+      </div>
+    </div>
+   ))}
+  </div>
+)}
 
       {!selectedTournament ? (
         <div>
@@ -179,12 +340,7 @@ console.log("PAYOUT RESPONSE:", text);
         </div>
       ) : (
         <div>
-          <button
-            onClick={() => setSelectedTournament(null)}
-            style={styles.back}
-          >
-            ⬅ Back
-          </button>
+        
 
           <p style={styles.status}>
             Status:{" "}
@@ -214,8 +370,17 @@ console.log("PAYOUT RESPONSE:", text);
                 : "🚀 Process Full Payout"}
             </button>
           )}
-
-          {participants.map((p, i) => {
+<div style={styles.tableHeaderRow}>
+  <div>🏅 Rank</div>
+  <div>👤 Player</div>
+  <div>🆔 ID</div>
+  <div>💰 Balance</div>
+  <div>📈 Performance</div>
+  <div>🎁 Prize</div>
+  <div>📌 Status</div>
+  <div>⚡ Action</div>
+</div>
+          {participants.map((p: Participant, i: number) => {
             const rank = i + 1;
 
             const payout =
@@ -226,33 +391,147 @@ console.log("PAYOUT RESPONSE:", text);
             if (!payout) return null;
 
             return (
-              <div key={p.id} style={styles.row}>
+            <div key={p.id} style={styles.tableRow}>
+
   <div style={styles.rank}>#{rank}</div>
 
   <div style={styles.user}>
-    {p.username}
+    {p.username || "Unknown Player"}
     <div style={{ fontSize: 11, color: "#888" }}>
-      {p.phone}
+      FXA-ID-{p.id.slice(0, 6)}
     </div>
   </div>
 
-  <div style={{ width: 200, color: "#bbb" }}>
-    {p.email}
-  </div>
+  <div style={styles.publicIdCell}>
+  {p.publicId || `FXA-${p.id.slice(0, 6)}`}
+</div>
+<div style={styles.cell}>
+  {formatNum(p.balance ?? 0)} T
+</div>
 
-  <div style={{ width: 160, color: "#00d4ff", fontWeight: 700 }}>
-    End: {p.performance ?? 0}
-  </div>
+<div style={styles.performance}>
+  {((p.balance ?? 0) -
+    (selectedTournament?.startingBalance ?? 0) -
+    (p.rebuyInjectedTotal ?? 0)) >= 0
+    ? "+"
+    : ""}
+  {formatNum(
+    (p.balance ?? 0) -
+    (selectedTournament?.startingBalance ?? 0) -
+    (p.rebuyInjectedTotal ?? 0)
+  )} T
+</div>
 
   <div style={styles.amount}>
-    {payout.amount} $
+   {formatNum(payout.amount)} $
   </div>
+
+ <div
+  style={{
+    ...styles.statusBadge,
+    color:
+      p.payoutStatus === "paid"
+        ? "#22c55e"
+        : p.payoutStatus === "pending"
+        ? "#facc15"
+        : p.payoutStatus === "processing"
+        ? "#3b82f6"
+        : "#ef4444",
+  }}
+>
+  {p.payoutStatus === "paid"
+    ? "🟢 Paid"
+    : p.payoutStatus === "processing"
+    ? "🔵 Processing"
+    : p.payoutStatus === "failed"
+    ? "🔴 Failed"
+    : "🟡 Pending"}
 </div>
+
+  <div style={styles.actions}>
+   <button
+  style={styles.viewBtn}
+  onClick={() => setSelectedParticipant(p)}
+>
+  View
+</button>
+    <button
+  style={styles.payBtn}
+  onClick={() => paySingleParticipant(p.id)}
+  disabled={p.payoutStatus === "paid"}
+>
+  Pay
+</button>
+  </div>
+
+</div>
+
             );
           })}
         </div>
       )}
+      {selectedParticipant && (
+  <div style={styles.modalOverlay} onClick={() => setSelectedParticipant(null)}>
+    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+
+      <h3 style={{ color: "#fff", marginBottom: 10 }}>
+        Player Details
+      </h3>
+
+      <p style={styles.modalText}>Player: {selectedParticipant.username}</p>
+      <p style={styles.modalText}>Public ID: FXA-ID-{selectedParticipant.id.slice(0, 6)}</p>
+
+      <p style={styles.modalText}>
+        ROI: {selectedParticipant.roi ?? 0}%
+      </p>
+
+      <p style={styles.modalText}>
+        Win Rate: {selectedParticipant.winRate ?? 0}%
+      </p>
+
+      <p style={styles.modalText}>
+        Trades: {selectedParticipant.trades ?? 0}
+      </p>
+
+      <p style={styles.modalText}>
+        Wins: {selectedParticipant.performance?.wins ?? 0}
+      </p>
+
+      <p style={styles.modalText}>
+        Losses: {selectedParticipant.performance?.losses ?? 0}
+      </p>
+
+      <p style={styles.modalText}>
+        Balance: {formatNum(selectedParticipant.balance)}
+      </p>
+
+      <p style={styles.modalText}>
+        Prize: {selectedParticipant.prizeAmount ?? 0}
+      </p>
+
+      <button
+        style={styles.closeBtn}
+        onClick={() => setSelectedParticipant(null)}
+      >
+        Close
+      </button>
+
     </div>
+  </div>
+)}
+{selectedTournament && (
+  <div style={{ marginTop: 20, display: "flex", justifyContent: "center" }}>
+    <button
+      onClick={() => setSelectedTournament(null)}
+      style={styles.backBtn}
+    >
+      ⬅ Back to Tournaments
+    </button>
+  </div>
+)}
+
+    </div>
+    
   );
 }
 
@@ -263,47 +542,35 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "100vh",
   },
 
-  title: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: 900,
-    marginBottom: 16,
+  title: {    color: "#fff",    fontSize: 20,    fontWeight: 900,    marginBottom: 16,
   },
 
-  tournamentCard: {
-    background: "#12122a",
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 10,
-    cursor: "pointer",
+  tournamentCard: {    background: "#12122a",  padding: 14,
+    borderRadius: 10,    marginBottom: 10,    cursor: "pointer",
   },
 
   name: { color: "#fff", fontWeight: 800 },
   small: { color: "#999", fontSize: 12 },
 
-  back: {
-    marginBottom: 10,
-    background: "transparent",
-    color: "#3b82f6",
-    border: "none",
-    cursor: "pointer",
+  back: {    marginBottom: 10,    background: "transparent",
+    color: "#3b82f6",    border: "none",    cursor: "pointer",
   },
 
-  status: {
-    color: "#999",
-    marginBottom: 10,
+  status: {    color: "#999",    marginBottom: 10,
   },
 
   bulkBtn: {
-    background: "#16a34a",
-    color: "#fff",
-    padding: 12,
-    borderRadius: 10,
-    border: "none",
-    marginBottom: 12,
-    cursor: "pointer",
-    fontWeight: 800,
-  },
+    background: "#16a34a",    color: "#fff",
+    padding: 12,    borderRadius: 10,    border: "none",    marginBottom: 12,    cursor: "pointer",
+    fontWeight: 800,  },
+    
+    activeTournamentCard: {
+  background: "#12122a",
+  padding: 14,
+  borderRadius: 12,
+  marginBottom: 16,
+  border: "1px solid #3b82f6",
+},
 
   row: {
     display: "flex",
@@ -330,4 +597,119 @@ const styles: Record<string, React.CSSProperties> = {
     color: "#22c55e",
     fontWeight: 800,
   },
+    summaryGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: 10,
+    marginBottom: 16,
+  },
+
+  summaryCard: {
+    background: "#12122a",
+    padding: 12,
+    borderRadius: 10,
+    color: "#fff",
+    fontWeight: 700,
+    fontSize: 14,
+  },
+
+  tableHeader: {
+    color: "#999",
+    fontSize: 12,
+    marginBottom: 8,
+    padding: "6px 10px",
+  },
+
+cell: {
+  width: 160,
+  color: "#bbb",
+  paddingLeft: 12,
+  display: "flex",
+  alignItems: "left",
+},
+publicIdCell: {
+  width: 160,
+  color: "#bbb",
+  paddingLeft: 5,
+  alignItems: "left",
+},
+  performance: {
+    width: 140,
+    color: "#00d4ff",
+    fontWeight: 700,
+  },
+
+  statusBadge: {
+    width: 100,
+    color: "#facc15",
+    fontWeight: 800,
+  },
+
+  actions: {
+    display: "flex",
+    gap: 6,
+  },
+
+  viewBtn: {
+    background: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    padding: "4px 8px",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+
+  payBtn: {
+    background: "#16a34a",
+    color: "#fff",
+    border: "none",
+    padding: "4px 8px",
+    borderRadius: 6,
+    cursor: "pointer",
+  },
+  tableHeaderRow: {
+  display: "grid",
+  gridTemplateColumns: "80px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr",
+  color: "#999",
+  fontSize: 12,
+  padding: "8px 10px",
+  marginBottom: 6,
+},
+
+tableRow: {
+  display: "grid",
+  gridTemplateColumns: "70px 1.8fr 1fr 1fr 1fr 1fr 1fr 1fr",
+  background: "#12122a",
+  padding: 10,
+  borderRadius: 10,
+  marginBottom: 8,
+  alignItems: "center",
+},
+  modalOverlay: {  position: "fixed",  top: 0,  left: 0,  right: 0,
+  bottom: 0,  background: "rgba(0,0,0,0.7)",  display: "flex",
+  alignItems: "center",  justifyContent: "center",  zIndex: 9999,
+},
+
+modal: {  background: "#12122a",  padding: 20,  borderRadius: 12,
+  width: 320,},
+
+modalText: {  color: "#bbb",  fontSize: 13,  marginBottom: 6,
+},
+
+closeBtn: {  marginTop: 10,  background: "#ef4444",  color: "#fff",
+  border: "none",  padding: "8px 12px",  borderRadius: 8,  cursor: "pointer",
+},
+backBtn: {
+  marginTop: 20,
+  background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+  color: "#fff",
+  border: "none",
+  padding: "12px 18px",
+  borderRadius: 12,
+  cursor: "pointer",
+  fontWeight: 700,
+  width: "100%",
+  maxWidth: 260,
+  boxShadow: "0 6px 18px rgba(59,130,246,0.3)",
+},
 };

@@ -12,10 +12,11 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../lib/firebaseConfig";
-import { DocumentData } from "firebase/firestore";
+import { DocumentData, serverTimestamp } from "firebase/firestore";
 
 /* ---------------- TYPES ---------------- */
 
+type Tab = "overview" | "leaderboard";
 interface Participant {
   id: string;
   username: string;
@@ -65,10 +66,13 @@ export default function TournamentsPage() {
   const [search, setSearch] = useState("");
 
   const [modalOpen, setModalOpen] = useState(false);
+const [activeTab, setActiveTab] = useState<Tab>("overview" as const);
+
  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
 
   const [selectedTournament, setSelectedTournament] =
     useState<Tournament | null>(null);
+    const [detailsOpen, setDetailsOpen] = useState(false);
 
 const [participants, setParticipants] = useState<Participant[]>([]);
 
@@ -142,16 +146,26 @@ const [participants, setParticipants] = useState<Participant[]>([]);
   );
 
   const unsub = onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => {
-      const data = d.data() as DocumentData;
+const list = snap.docs.map((d) => {
+  const data = d.data() as DocumentData;
 
-      return {
-        id: d.id,
-        username: data.username ?? "User",
-        balance: Number(data.balance ?? 0),
-         performance: Number(data.performance ?? 0),
-      };
-    });
+  const balance = Number(data.balance ?? 0);
+  const startingBalance =
+    selectedTournament?.startingBalance ?? 0;
+
+  const rebuyInjectedTotal = Number(data.rebuyInjectedTotal ?? 0);
+
+  const performance =
+    balance - startingBalance - rebuyInjectedTotal;
+
+  return {
+    id: d.id,
+    username: data.username ?? "User",
+    balance,
+    rebuyInjectedTotal,
+    performance,
+  };
+});
 
     setParticipants(list);
   });
@@ -238,8 +252,10 @@ const safePayouts = payouts
         onRegisterInfo: formOnRegisterInfo,
         startTime,
         endTime,
-        status: "live", // ✅ ADD THIS
-        createdAt: new Date().toISOString(),
+       participantsCount: 0,
+
+  featured: true,
+        createdAt: serverTimestamp(),
       };
 
       if (editing && selectedTournament) {
@@ -285,33 +301,76 @@ const safePayouts = payouts
   )
   .map((t) => (
     <div
-      key={t.id}
-      style={styles.card}
-    >
-      <h3>{t.name}</h3>
-      <p style={{ opacity: 0.7 }}>{t.description}</p>
-      <p>👥 {t.participantsCount}</p>
+  key={t.id}
+  style={{
+    ...styles.card,
+    cursor: "pointer",
+    padding: 18,
+    border: "1px solid #252525",
+    background: "linear-gradient(180deg,#171717,#101010)",
+  }}
+  onClick={() => {
+    setSelectedTournament(t);
+    setDetailsOpen(true);
+    setActiveTab("overview");
+  }}
+>
+  <div style={{ display: "flex", justifyContent: "space-between" }}>
+    <h3 style={{ margin: 0 }}>{t.name}</h3>
 
-      {/* ✅ ADD BUTTON HERE */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setSelectedTournament(t);
-          setLeaderboardOpen(true);
-        }}
-        style={{
-          marginTop: 10,
-          padding: "6px 10px",
-          background: "#6A00FF",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          cursor: "pointer",
-        }}
-      >
-        Leaderboard
-      </button>
-    </div>
+    <span
+      style={{
+        padding: "4px 10px",
+        borderRadius: 30,
+        fontSize: 12,
+        background:
+          t.status === "Live"
+            ? "#00c853"
+            : t.status === "Upcoming"
+            ? "#ff9800"
+            : "#555",
+      }}
+    >
+      {t.status}
+    </span>
+  </div>
+
+  <p
+    style={{
+      color: "#999",
+      marginTop: 10,
+      marginBottom: 16,
+    }}
+  >
+    {t.description}
+  </p>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+    }}
+  >
+    <div>👥 {t.participantsCount} Players</div>
+
+    <div>💰 {t.prizePool}</div>
+
+    <div>💵 {t.entryFee}</div>
+
+    <div>⏱ {t.durationMinutes} mins</div>
+  </div>
+
+  <div
+    style={{
+      marginTop: 18,
+      color: "#8c52ff",
+      fontWeight: 600,
+    }}
+  >
+    Tap to view full details →
+  </div>
+</div>
   ))}
 
       {modalOpen && (
@@ -440,27 +499,263 @@ const safePayouts = payouts
           </div>
         </div>
       )}
-      {leaderboardOpen && selectedTournament && (
-  <div style={{ marginTop: 20, background: "#111", padding: 20 }}>
-    <h2>{selectedTournament.name} Leaderboard</h2>
+     
+  <>
+{detailsOpen && selectedTournament && (
+<div
+style={{
+position:"fixed",
+inset:0,
+background:"rgba(0,0,0,.82)",
+display:"flex",
+justifyContent:"center",
+alignItems:"center",
+zIndex:9999
+}}
+>
+
+<div
+style={{
+width:"90%",
+maxWidth:900,
+maxHeight:"88vh",
+overflowY:"auto",
+background:"#121212",
+borderRadius:24,
+border:"1px solid #2b2b2b",
+padding:30,
+boxShadow:"0 0 40px rgba(0,0,0,.5)",
+
+/* hide scrollbar (modern browsers) */
+scrollbarWidth: "none", // Firefox
+msOverflowStyle: "none" // IE/Edge old
+}}
+className="no-scrollbar"
+>
+
+<div
+style={{
+display:"flex",
+justifyContent:"space-between",
+alignItems:"center",
+marginBottom:25
+}}
+>
+
+<div>
+
+<h2 style={{margin:0,fontSize:28}}>
+🏆 {selectedTournament.name}
+</h2>
+<div style={{ display: "flex", gap: 10, marginTop: 15 }}>
+  <button
+    onClick={() => setActiveTab("overview")}
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 10,
+      background: activeTab === ("overview" as Tab)? "#6A00FF" : "#1e1e1e",
+      color: "#fff",
+      border: "none",
+    }}
+  >
+    Overview
+  </button>
+
+  <button
+   onClick={() => setActiveTab("leaderboard" as const)}
+    style={{
+      flex: 1,
+      padding: 10,
+      borderRadius: 10,
+      background: activeTab === ("leaderboard" as Tab) ? "#6A00FF" : "#1e1e1e",
+      color: "#fff",
+      border: "none",
+    }}
+  >
+    Leaderboard
+  </button>
+</div>
+<div
+style={{
+marginTop:8,
+display:"inline-block",
+padding:"6px 14px",
+borderRadius:40,
+background:
+selectedTournament.status==="Live"
+?"#00C853":
+selectedTournament.status==="Upcoming"
+?"#FF9800":
+"#666"
+}}
+>
+{selectedTournament.status}
+</div>
+
+</div>
+
+</div>
+
+<hr style={{borderColor:"#242424"}}/>
+
+<h3>Overview</h3>
+
+<div
+style={{
+display:"grid",
+gridTemplateColumns:"repeat(2,1fr)",
+gap:15,
+marginBottom:30
+}}
+>
+
+<div style={styles.infoBox}>
+💰 Prize Pool
+<br/>
+<b>{selectedTournament.prizePool}</b>
+</div>
+
+<div style={styles.infoBox}>
+💵 Entry Fee
+<br/>
+<b>{selectedTournament.entryFee}</b>
+</div>
+
+<div style={styles.infoBox}>
+🔁 Rebuy
+<br/>
+<b>{selectedTournament.rebuyFee}</b>
+</div>
+
+<div style={styles.infoBox}>
+🏦 Starting Balance
+<br/>
+<b>{selectedTournament.startingBalance}</b>
+</div>
+
+<div style={styles.infoBox}>
+👥 Participants
+<br/>
+<b>{selectedTournament.participantsCount}</b>
+</div>
+
+<div style={styles.infoBox}>
+⏱ Duration
+<br/>
+<b>{selectedTournament.durationMinutes} mins</b>
+</div>
+
+</div>
+
+<h3>Description</h3>
+
+<div style={styles.sectionBox}>
+{selectedTournament.description||"None"}
+</div>
+
+<h3>Rules</h3>
+
+<div style={styles.sectionBox}>
+{selectedTournament.rules||"None"}
+</div>
+
+<h3>Registration Information</h3>
+
+<div style={styles.sectionBox}>
+{selectedTournament.onRegisterInfo||"None"}
+</div>
+
+<h3>Payout Structure</h3>
+
+<div style={styles.sectionBox}>
+
+{selectedTournament.payoutStructure?.map(p=>(
+<div
+key={p.rank}
+style={{
+display:"flex",
+justifyContent:"space-between",
+padding:"12px 0",
+borderBottom:"1px solid #242424"
+}}
+>
+
+<div>
+🏅 Rank {p.rank}
+</div>
+
+<div>
+{p.amount}
+</div>
+
+</div>
+))}
+
+</div>
+{activeTab === "leaderboard" && (
+  <div style={{ marginTop: 20 }}>
+    <h3>Leaderboard</h3>
 
     {participants.length === 0 ? (
-      <p style={{ color: "#666" }}>No participants</p>
+      <p style={{ color: "#777" }}>No participants yet</p>
     ) : (
-      participants.map((p, i) => (
-        <div key={p.id}>
-          #{i + 1} {p.username}
-— {p.performance.toFixed(2)}%
-        </div>
-      ))
-    )}
+      [...participants]
+        .sort((a, b) => b.performance - a.performance)
+        .map((p, i) => (
+          <div
+            key={p.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "12px 0",
+              borderBottom: "1px solid #2a2a2a",
+            }}
+          >
+            <div>
+              #{i + 1} {p.username}
+            </div>
 
-    <button onClick={() => setLeaderboardOpen(false)}>
-      Close
-    </button>
+            <div style={{ color: "#6A00FF" }}>
+              {p.performance.toFixed(2)}%
+            </div>
+          </div>
+        ))
+    )}
   </div>
 )}
+<div
+style={{
+display:"flex",
+gap:15,
+marginTop:30
+}}
+>
+
+<button
+style={{
+flex:1,
+padding:14,
+background:"#1e1e1e",
+border:"1px solid #333",
+borderRadius:12,
+color:"#fff"
+}}
+onClick={()=>{setDetailsOpen(false)
+;setLeaderboardOpen(true)}}
+>
+Done
+</button>
+</div>
+
+</div>
+</div>
+)}
+      
+     </>
+
     </div>
+    
   );
 }
 
