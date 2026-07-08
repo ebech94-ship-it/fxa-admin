@@ -454,9 +454,15 @@ Math.max(0,Number(p.percentage))
   </option>
 </select>
              <Label text="Prize Pool" />
-<Input
-  value={formPrizeMode === "sponsored" ? formPrize : "Auto Generated"}
-  set={setFormPrize}
+<input
+ value={
+   formPrizeMode === "sponsored"
+   ? formPrize
+   : "Generated from entries"
+ }
+ disabled={formPrizeMode === "pool"}
+ onChange={(e)=>setFormPrize(e.target.value)}
+ style={styles.input}
 />
          <Label text="Prize Distribution" />
 
