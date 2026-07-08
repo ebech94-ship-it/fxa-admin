@@ -22,6 +22,7 @@ interface Participant {
   username: string;
   balance: number;
    performance: number;
+   rebuyInjectedTotal?: number;
 }
 
 interface Payout {
@@ -33,7 +34,7 @@ interface Payout {
 interface Tournament {
   id: string;
   name: string;
-   prizeMode?: "sponsored" | "pool";
+   prizeModel?: "sponsored" | "dynamic";
   startingBalance: number;
   prizePool: number;
   payoutStructure?: Payout[];
@@ -122,6 +123,7 @@ const [payoutType, setPayoutType] =
         return {
           id: d.id,
           name: data.name ?? "",
+          prizeModel: data.prizeModel ?? "sponsored",
           startingBalance: data.startingBalance ?? 0,
           prizePool: data.prizePool ?? 0,
           payoutStructure: data.payoutStructure ?? [],
@@ -398,9 +400,12 @@ Math.max(0,Number(p.percentage))
   >
     <div>👥 {t.participantsCount} Players</div>
 
-   <div>💰 {t.prizeMode === "pool"
-          ? "Auto Pool"
-        : t.prizePool}
+   <div>
+💰 {
+ t.prizeModel === "dynamic"
+ ? "Auto Pool"
+ : t.prizePool
+}
 </div>
 
     <div>💵 {t.entryFee}</div>
@@ -689,7 +694,13 @@ marginBottom:30
 <div style={styles.infoBox}>
 💰 Prize Pool
 <br/>
-<b>{selectedTournament.prizePool}</b>
+<b>
+{
+ selectedTournament.prizeModel === "dynamic"
+ ? "Generated From Entries"
+ : selectedTournament.prizePool
+}
+</b>
 </div>
 
 <div style={styles.infoBox}>
