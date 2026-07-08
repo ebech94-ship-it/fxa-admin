@@ -27,11 +27,13 @@ interface Participant {
 interface Payout {
   rank: number;
   amount: number;
+   percentage?: number;
 }
 
 interface Tournament {
   id: string;
   name: string;
+   prizeMode?: "sponsored" | "pool";
   startingBalance: number;
   prizePool: number;
   payoutStructure?: Payout[];
@@ -73,6 +75,8 @@ const [activeTab, setActiveTab] = useState<Tab>("overview" as const);
   const [selectedTournament, setSelectedTournament] =
     useState<Tournament | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
+const [formPrizeMode, setFormPrizeMode] =
+  useState<"sponsored" | "pool">("sponsored");
 
 const [participants, setParticipants] = useState<Participant[]>([]);
 
@@ -95,6 +99,8 @@ const [participants, setParticipants] = useState<Participant[]>([]);
   const [delayMinutes, setDelayMinutes] = useState("0");
 
   const [payouts, setPayouts] = useState<Payout[]>([{ rank: 1, amount: 0 }]);
+const [payoutType, setPayoutType] =
+  useState<"amount" | "percentage">("amount");
 
   /* ---------------- LOAD ---------------- */
 
@@ -233,14 +239,34 @@ if (!Array.isArray(payouts) || payouts.length === 0) {
   setSaving(false);
   return;
 }
-const safePayouts = payouts
-  .sort((a, b) => a.rank - b.rank)
-  .map(p => ({
-    rank: Number(p.rank),
-    amount: Math.max(0, Number(p.amount)),
-  }));
+const safePayouts =
+payouts
+.sort((a,b)=>a.rank-b.rank)
+.map(p=>({
+
+rank:Number(p.rank),
+
+amount:
+formPrizeMode==="pool" &&
+payoutType==="percentage"
+?
+0
+:
+Math.max(0,Number(p.amount)),
+
+
+percentage:
+formPrizeMode==="pool" &&
+payoutType==="percentage"
+?
+Math.max(0,Number(p.percentage))
+:
+0
+
+}));
       const data = {
         name: formName,
+        prizeMode: formPrizeMode,
         startingBalance: sb,
         prizePool: prize,
        payoutStructure: safePayouts,
@@ -369,7 +395,10 @@ const safePayouts = payouts
   >
     <div>👥 {t.participantsCount} Players</div>
 
-    <div>💰 {t.prizePool}</div>
+   <div>💰 {t.prizeMode === "pool"
+          ? "Auto Pool"
+        : t.prizePool}
+</div>
 
     <div>💵 {t.entryFee}</div>
 
@@ -399,50 +428,79 @@ const safePayouts = payouts
 
               <Label text="Starting Balance" />
               <Input value={formSB} set={setFormSB} />
+<Label text="Prize Model" />
 
-              <Label text="Prize Pool" />
-              <Input value={formPrize} set={setFormPrize} />
-              <Label text="Prize Distribution" />
-
-{payouts.map((p, i) => (
-  <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-    <input
-      value={p.rank}
-      onChange={(e) => {
-        const copy = [...payouts];
-        copy[i].rank = Number(e.target.value);
-        setPayouts(copy);
-      }}
-      style={{ flex: 1 }}
-    />
-
-    <input
-      value={p.amount}
-      onChange={(e) => {
-        const copy = [...payouts];
-        copy[i].amount = Number(e.target.value);
-        setPayouts(copy);
-      }}
-      style={{ flex: 2 }}
-    />
-
-    <button
-      onClick={() =>
-        setPayouts(payouts.filter((_, idx) => idx !== i))
-      }
-    >
-      X
-    </button>
-  </div>
-))}
-
-<button
-  onClick={() =>
-    setPayouts([...payouts, { rank: payouts.length + 1, amount: 0 }])
+<select
+  value={formPrizeMode}
+  onChange={(e) =>
+    setFormPrizeMode(e.target.value as "sponsored" | "pool")
   }
-  style={{ color: "#6A00FF" }}
+  style={styles.input}
 >
-  + Add Winner
+  <option value="sponsored">
+    Sponsored Prize Pool
+  </option>
+
+  <option value="pool">
+    Participant Generated Pool
+  </option>
+</select>
+             <Label text="Prize Pool" />
+<Input
+  value={formPrizeMode === "sponsored" ? formPrize : "Auto Generated"}
+  set={setFormPrize}
+/>
+         <Label text="Prize Distribution" />
+
+{formPrizeMode === "pool" && ( <select value={payoutType}
+onChange={(e)=> setPayoutType( e.target.value as "amount" | "percentage"
+ )} style={styles.input}>
+<option value="percentage">
+Percentage Distribution
+</option>
+<option value="amount">
+Fixed Amount
+</option>
+</select>
+)}
+{payouts.map((p,i)=>( <div key={i} style={{ display:"flex",
+gap:8, marginBottom:8 }} >
+<input value={p.rank} placeholder="Rank" onChange={(e)=>{
+const copy=[...payouts];
+copy[i].rank =
+Number(e.target.value);
+setPayouts(copy);
+}}
+style={{flex:1}}
+/>
+<input value={ payoutType==="percentage" ? p.percentage ?? ""
+: p.amount }
+placeholder={ payoutType==="percentage" ? "%"
+: "Amount"}
+onChange={(e)=>{ const copy=[...payouts];
+if(payoutType==="percentage"){ copy[i].percentage =
+Number(e.target.value); }
+
+else{
+copy[i].amount = Number(e.target.value); }
+setPayouts(copy);
+}}
+style={{flex:2}}
+/>
+<button onClick={()=> setPayouts( payouts.filter(
+(_,idx)=>idx!==i ))}
+       >
+      X
+</button>
+</div> 
+))}
+<button
+onClick={()=>setPayouts([...payouts,
+{rank:payouts.length+1, amount:0, percentage:0}])
+}
+style={{color:"#6A00FF"}}
+>
++ Add Winner
 </button>
 
               <Label text="Entry Fee" />
