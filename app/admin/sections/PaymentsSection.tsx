@@ -6,7 +6,8 @@ import {  useEffect, useState } from "react";
 type Transaction = {
   id: string;
   userId: string;
-  username?: string;
+ username?: string;
+publicId?: string;
   amount: number;
   type: "deposit" | "withdrawal";
   status: "pending" | "completed" | "failed";
@@ -67,7 +68,9 @@ console.log("type =", typeof transactions);
         transactions.map((t) => (
           <div key={t.id} style={styles.card}>
             <div style={styles.username}>{t.username || t.userId}</div>
-            <div style={styles.amount}>${t.amount}</div>
+            <div style={styles.amount}>
+  ${Number(t.amount || 0).toFixed(2)}
+</div>
 
             <div style={styles.meta}>
               {t.type} • {t.status}
@@ -77,7 +80,9 @@ console.log("type =", typeof transactions);
               Method: {t.method ?? "N/A"}
             </div>
 
-            <div style={styles.meta}>ID: {t.id}</div>
+     <div style={styles.meta}>ID: {t.id}</div>
+<div style={styles.meta}>Public ID: {t.publicId || "N/A"}</div>
+<div style={styles.meta}>Username: {t.username || "Unknown"}</div>
           </div>
         ))
       )}

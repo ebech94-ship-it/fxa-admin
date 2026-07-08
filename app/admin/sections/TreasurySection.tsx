@@ -190,7 +190,13 @@ const d = new Date(dateValue as string | number | Date);
         ) : (
           displayedTx.map((tx) => (
             <div key={tx.id} style={styles.row}>
-              <div style={styles.colType}>{tx.type}</div>
+              <div style={styles.colType}>
+  {(() => { switch (tx.type) { case "bank_withdrawal": return "Withdrawal";
+      case "card_deposit": return "Deposit";
+      case "tournament_registration": return "Tournament";
+      case "tournament_rebuy": return "Rebuy"; default:
+        return tx.type;  } })()}
+</div>
               <div
                 style={{
                   ...styles.colStatus,
@@ -200,7 +206,9 @@ const d = new Date(dateValue as string | number | Date);
                 {tx.status}
               </div>
               <div style={styles.colUser}>{tx.username || "Unknown"}</div>
-              <div style={styles.colAmount}>${tx.amount}</div>
+              <div style={styles.colAmount}>
+  ${Number(tx.amount || 0).toFixed(2)}
+</div>
               <div style={styles.colDate}>
   {formatDate(tx.createdAt)}
 </div>

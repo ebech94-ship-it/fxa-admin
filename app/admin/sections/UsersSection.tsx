@@ -126,7 +126,10 @@ export default function UsersPage() {
 
     setLoading(false);
   };
-
+const totalBalance = filtered.reduce(
+  (sum, u) => sum + Number(u.balance || 0),
+  0
+);
   /* ---------------- UI ---------------- */
 
   return (
@@ -140,24 +143,103 @@ export default function UsersPage() {
         style={{ padding: 10, width: "100%", marginBottom: 10 }}
       />
 
-      {filtered.map((u, i) => (
-        <div
-          key={u.id}
-          onClick={() => {
-            setSelected(u);
-            setOpen(true);
-          }}
-          style={{
-            padding: 10,
-            background: "#111",
-            marginBottom: 8,
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          {i + 1}. {u.email} — ${u.balance}
-        </div>
-      ))}
+     <div
+  style={{
+    background: "#111",
+    borderRadius: 10,
+    overflow: "hidden",
+  }}
+>
+  {/* TABLE HEADER */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "50px 2fr 1fr 1fr",
+      padding: 12,
+      background: "#1f2937",
+      color: "#fff",
+      fontWeight: 800,
+    }}
+  >
+    <div>#</div>
+    <div>User</div>
+    <div style={{ color: "#facc15" }}>Wallet</div>
+    <div>Status</div>
+  </div>
+
+  {/* TABLE ROWS */}
+ {/* TABLE ROWS SCROLL AREA */}
+<div
+  style={{
+    maxHeight: 500,
+    overflowY: "auto",
+  }}
+>
+  {filtered.map((u, i) => (
+    <div
+      key={u.id}
+      onClick={() => {
+        setSelected(u);
+        setOpen(true);
+      }}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "50px 2fr 1fr 1fr",
+        padding: 12,
+        borderBottom: "1px solid #222",
+        cursor: "pointer",
+        alignItems: "center",
+      }}
+    >
+      <div style={{ color: "#9ca3af" }}>
+        {i + 1}
+      </div>
+
+      <div style={{ color: "#60a5fa", fontWeight: 700 }}>
+        {u.email}
+      </div>
+
+      <div style={{ color: "#facc15", fontWeight: 800 }}>
+        ${Number(u.balance || 0).toFixed(2)}
+      </div>
+
+      <div
+        style={{
+          color: u.frozen ? "#ef4444" : "#22c55e",
+          fontWeight: 800,
+        }}
+      >
+        {u.frozen ? "Frozen" : "Active"}
+      </div>
+    </div>
+  ))}
+</div>
+
+  {/* TOTAL FOOTER */}
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "50px 2fr 1fr 1fr",
+      padding: 14,
+      background: "#1a1a40",
+      fontWeight: 900,
+    }}
+  >
+    <div></div>
+
+    <div style={{ color: "#fff" }}>
+      TOTAL USERS: {filtered.length}
+    </div>
+
+    <div style={{ color: "#00ffcc" }}>
+              ${totalBalance.toFixed(2)}
+    </div>
+
+    <div style={{ color: "#fff" }}>
+      Treasury
+    </div>
+  </div>
+</div>
 
       {/* MODAL */}
       {open && selected && (
@@ -165,7 +247,7 @@ export default function UsersPage() {
           <div style={boxStyle}>
             <h3>{selected.email}</h3>
 
-            <p>Balance: ${selected.balance}</p>
+            <p>Balance: ${Number(selected.balance || 0).toFixed(2)}</p>
 
             <select
               value={mode}

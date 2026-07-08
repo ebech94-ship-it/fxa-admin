@@ -104,7 +104,9 @@ useEffect(() => {
             <div key={t.id} style={styles.row}>
               <div style={styles.index}>{i + 1}.</div>
               <div style={styles.txUser}>{t.user}</div>
-              <div style={styles.txAmount}>{t.amount} $</div>
+             <div style={styles.txAmount}>
+  {Number(t.amount || 0).toFixed(2)} $
+</div>
               <div style={styles.txStatus}>{t.status}</div>
             </div>
           ))}

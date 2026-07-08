@@ -258,14 +258,29 @@ const safePayouts = payouts
         createdAt: serverTimestamp(),
       };
 
-      if (editing && selectedTournament) {
-        await updateDoc(doc(db, "tournaments", selectedTournament.id), {
-          ...data,
-          updatedAt: new Date().toISOString(),
-        });
-      } else {
-        await addDoc(collection(db, "tournaments"), data);
-      }
+     if (editing && selectedTournament) {
+  await updateDoc(doc(db, "tournaments", selectedTournament.id), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
+} else {
+  // Create the tournament
+  const tournamentRef = await addDoc(
+    collection(db, "tournaments"),
+    data
+  );
+
+  // Create an alert for all users
+  await addDoc(collection(db, "alerts"), {
+  type: "tournament",
+  tournamentId: tournamentRef.id,
+  title: "🏆 New Tournament Open",
+  message: `${formName} is now open for registration.`,
+  actionLabel: "Join Now",
+  priority: "high",
+  createdAt: serverTimestamp(),
+});
+}
 
       setModalOpen(false);
       setEditing(false);

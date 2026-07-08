@@ -47,6 +47,7 @@ interface Participant {
   rebuyInjectedTotal?: number;
   prizeAmount?: number;
   payoutStatus?: "pending" | "paid" | "processing" | "failed";
+paidOut?: boolean;
 }
 
 // 🔥 FIX: Firestore document types (no `any`)
@@ -66,6 +67,7 @@ export default function TournamentPayoutSection() {
 
   const [loadingPayout, setLoadingPayout] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
 const now = useState(() => Date.now())[0];
 
@@ -86,7 +88,19 @@ useEffect(() => {
           ...data,
         };
       })
-      .filter((t) => Date.now() > t.endTime);
+     .filter((t) => {
+  const isEnded = Date.now() > t.endTime;
+
+  console.log("TOURNAMENT CHECK:", {
+    id: t.id,
+    name: t.name,
+    now: Date.now(),
+    endTime: t.endTime,
+    isEnded,
+  });
+
+  return isEnded;
+});
 
     setTournaments(list);
   });
@@ -100,11 +114,13 @@ useEffect(() => {
 
   const q = query(
     collection(db, "tournaments", selectedTournament.id, "participants"),
-    orderBy("performance", "desc")
+    orderBy("performance.pnl", "desc")
   );
 
 const unsub = onSnapshot(q, (snap) => {
+console.log("PARTICIPANTS SNAPSHOT SIZE:", snap.size);
   const list: Participant[] = snap.docs.map((d) => {
+  console.log("RAW PARTICIPANT DOC:", d.id, d.data());
     const data = d.data() as ParticipantDoc;
 
     return {
@@ -123,17 +139,21 @@ const unsub = onSnapshot(q, (snap) => {
 
   return () => unsub();
 }, [selectedTournament]);
+const processFullPayout = async () => {
+  if (!selectedTournament) return;
 
-  const processFullPayout = async () => {
-    if (!selectedTournament) return;
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-    const auth = getAuth();
-    const user = auth.currentUser;
+  if (!user) {
+    alert("Admin not authenticated");
+    return;
+  }
 
-    if (!user) {
-      alert("Admin not authenticated");
-      return;
-    }
+  console.log("FULL PAYOUT REQUEST:", {
+    tournamentId: selectedTournament.id,
+    user: user.email,
+  });
 
     setLoadingPayout(true);
 
@@ -178,7 +198,14 @@ console.log("PAYOUT RESPONSE:", text);
     }
   };
 const paySingleParticipant = async (participantId: string) => {
+  console.log("PAY CLICKED:", {
+  participantId,
+  tournamentId: selectedTournament?.id,
+});
   if (!selectedTournament) return;
+
+  if (payingId) return; // prevent double click
+  setPayingId(participantId);
 
   const auth = getAuth();
   const user = auth.currentUser;
@@ -206,7 +233,11 @@ const paySingleParticipant = async (participantId: string) => {
       }
     );
 
-    const text = await res.text();
+  const text = await res.text();
+console.log("PAY API RESPONSE:", {
+  status: res.status,
+  body: text,
+});
 
     if (!res.ok) throw new Error(text);
 
@@ -214,7 +245,8 @@ const paySingleParticipant = async (participantId: string) => {
     setParticipants((prev) =>
       prev.map((p) =>
         p.id === participantId
-          ? { ...p, payoutStatus: "paid" }
+          ? { ...p, payoutStatus: "paid",
+paidOut: true }
           : p
       )
     );
@@ -227,7 +259,36 @@ const paySingleParticipant = async (participantId: string) => {
     alert(message);
   }
 };
-  return (
+// 🔥 FIX: fast lookup map so we NEVER depend on .find()
+const payoutMap = selectedTournament?.payoutStructure
+  ? Object.fromEntries(
+      selectedTournament.payoutStructure.map((p) => [
+        p.rank,
+        p.amount,
+      ])
+    )
+  : {};
+
+console.log("PAYOUT MAP:", payoutMap);
+console.log("PAYOUT STRUCTURE RAW:", selectedTournament?.payoutStructure);
+ 
+const startBalance = selectedTournament?.startingBalance ?? 0;
+
+const sortedParticipants = [...participants].sort((a, b) => {
+  const aPerformance =
+    (a.balance ?? 0) -
+    startBalance -
+    (a.rebuyInjectedTotal ?? 0);
+
+  const bPerformance =
+    (b.balance ?? 0) -
+    startBalance -
+    (b.rebuyInjectedTotal ?? 0);
+
+  return bPerformance - aPerformance;
+});
+
+return (
    
     <div style={styles.container}>
       {selectedTournament && (
@@ -246,7 +307,10 @@ const paySingleParticipant = async (participantId: string) => {
 
     <div style={{ color: "#999", fontSize: 12 }}>
       Prize Pool:{" "}
-      {selectedTournament?.payoutStructure?.reduce((a, b) => a + b.amount, 0) ?? 0} T
+      {(selectedTournament?.payoutStructure ?? []).reduce(
+  (a, b) => a + (b.amount ?? 0),
+  0
+)} T
     </div>
   </div>
 )}
@@ -297,7 +361,10 @@ const paySingleParticipant = async (participantId: string) => {
             ? "1px solid #3b82f6"
             : "none",
       }}
-      onClick={() => setSelectedTournament(t)}
+     onClick={() => {
+  console.log("SELECTED TOURNAMENT:", t);
+  setSelectedTournament(t);
+}}
     >
       <div style={styles.name}>{t.name || "Tournament"}</div>
 
@@ -380,94 +447,106 @@ const paySingleParticipant = async (participantId: string) => {
   <div>📌 Status</div>
   <div>⚡ Action</div>
 </div>
-          {participants.map((p: Participant, i: number) => {
-            const rank = i + 1;
+      {sortedParticipants.map((p, i) => {
+  const rank = i + 1;
+  const payoutAmount = payoutMap[rank] ?? 0;
 
-            const payout =
-              selectedTournament.payoutStructure?.find(
-                (x) => x.rank === rank
-              );
+  console.log("RANK LOOP:", {
+    index: i,
+    participantId: p.id,
+    pnl: p.pnl,
+    rank,
+  });
 
-            if (!payout) return null;
+  // skip if no payout defined for this rank
+  if (!payoutAmount) {
+    console.log("SKIPPING PARTICIPANT (NO PAYOUT):", {
+      rank,
+      participantId: p.id,
+    });
+    return null;
+  }
 
-            return (
-            <div key={p.id} style={styles.tableRow}>
+  return (
+    <div key={p.id} style={styles.tableRow}>
 
-  <div style={styles.rank}>#{rank}</div>
+      <div style={styles.rank}>#{rank}</div>
 
-  <div style={styles.user}>
-    {p.username || "Unknown Player"}
-    <div style={{ fontSize: 11, color: "#888" }}>
-      FXA-ID-{p.id.slice(0, 6)}
+      <div style={styles.user}>
+        {p.username || "Unknown Player"}
+        <div style={{ fontSize: 11, color: "#888" }}>
+          FXA-ID-{p.id.slice(0, 6)}
+        </div>
+      </div>
+
+      <div style={styles.publicIdCell}>
+        {p.publicId || `FXA-${p.id.slice(0, 6)}`}
+      </div>
+
+      <div style={styles.cell}>
+        {formatNum(p.balance ?? 0)} T
+      </div>
+
+      <div style={styles.performance}>
+        {((p.balance ?? 0) -
+          (selectedTournament?.startingBalance ?? 0) -
+          (p.rebuyInjectedTotal ?? 0)) >= 0
+          ? "+"
+          : ""}
+        {formatNum(
+          (p.balance ?? 0) -
+          (selectedTournament?.startingBalance ?? 0) -
+          (p.rebuyInjectedTotal ?? 0)
+        )} T
+      </div>
+
+      <div style={styles.amount}>
+        {formatNum(payoutAmount)} $
+      </div>
+
+      <div
+        style={{
+          ...styles.statusBadge,
+          color:
+            p.payoutStatus === "paid"
+              ? "#22c55e"
+              : p.payoutStatus === "processing"
+              ? "#3b82f6"
+              : p.payoutStatus === "failed"
+              ? "#ef4444"
+              : "#facc15",
+        }}
+      >
+        {p.payoutStatus === "paid"
+          ? "🟢 Paid"
+          : p.payoutStatus === "processing"
+          ? "🔵 Processing"
+          : p.payoutStatus === "failed"
+          ? "🔴 Failed"
+          : "🟡 Pending"}
+      </div>
+
+      <div style={styles.actions}>
+        <button
+          style={styles.viewBtn}
+          onClick={() => setSelectedParticipant(p)}
+        >
+          View
+        </button>
+
+        <button
+          style={styles.payBtn}
+          onClick={() => paySingleParticipant(p.id)}
+          disabled={p.payoutStatus === "paid" || payingId === p.id}
+        >
+          {payingId === p.id ? "Paying..." : "Pay"}
+        </button>
+      </div>
+
     </div>
-  </div>
+  );
+})}
 
-  <div style={styles.publicIdCell}>
-  {p.publicId || `FXA-${p.id.slice(0, 6)}`}
-</div>
-<div style={styles.cell}>
-  {formatNum(p.balance ?? 0)} T
-</div>
-
-<div style={styles.performance}>
-  {((p.balance ?? 0) -
-    (selectedTournament?.startingBalance ?? 0) -
-    (p.rebuyInjectedTotal ?? 0)) >= 0
-    ? "+"
-    : ""}
-  {formatNum(
-    (p.balance ?? 0) -
-    (selectedTournament?.startingBalance ?? 0) -
-    (p.rebuyInjectedTotal ?? 0)
-  )} T
-</div>
-
-  <div style={styles.amount}>
-   {formatNum(payout.amount)} $
-  </div>
-
- <div
-  style={{
-    ...styles.statusBadge,
-    color:
-      p.payoutStatus === "paid"
-        ? "#22c55e"
-        : p.payoutStatus === "pending"
-        ? "#facc15"
-        : p.payoutStatus === "processing"
-        ? "#3b82f6"
-        : "#ef4444",
-  }}
->
-  {p.payoutStatus === "paid"
-    ? "🟢 Paid"
-    : p.payoutStatus === "processing"
-    ? "🔵 Processing"
-    : p.payoutStatus === "failed"
-    ? "🔴 Failed"
-    : "🟡 Pending"}
-</div>
-
-  <div style={styles.actions}>
-   <button
-  style={styles.viewBtn}
-  onClick={() => setSelectedParticipant(p)}
->
-  View
-</button>
-    <button
-  style={styles.payBtn}
-  onClick={() => paySingleParticipant(p.id)}
-  disabled={p.payoutStatus === "paid"}
->
-  Pay
-</button>
-  </div>
-
-</div>
-
-            );
-          })}
         </div>
       )}
       {selectedParticipant && (
