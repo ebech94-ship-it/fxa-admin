@@ -266,7 +266,10 @@ Math.max(0,Number(p.percentage))
 }));
       const data = {
         name: formName,
-        prizeMode: formPrizeMode,
+        prizeModel:
+    formPrizeMode === "pool"
+      ? "dynamic"
+      : "sponsored",
         startingBalance: sb,
         prizePool: prize,
        payoutStructure: safePayouts,
