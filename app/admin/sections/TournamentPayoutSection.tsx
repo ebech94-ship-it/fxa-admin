@@ -4,8 +4,7 @@ import { getAuth } from "firebase/auth";
 import {
   collection,
   onSnapshot,
-  orderBy,
-  query,
+ 
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../../lib/firebaseConfig";
@@ -13,13 +12,22 @@ import { db } from "../../../lib/firebaseConfig";
 interface Tournament {
   id: string;
   name?: string;
+
+  prizeModel?: "sponsored" | "dynamic";
+  prizePool?: number;
+
   endTime: number;
-    startingBalance?: number; 
+  startingBalance?: number;
+
   paidOut?: boolean;
   payoutLocked?: boolean;
-  payoutStructure?: { rank: number; amount: number }[];
-}
 
+  payoutStructure?: {
+    rank: number;
+    amount: number;
+    percentage?: number;
+  }[];
+}
 interface Participant {
   id: string;
 
@@ -112,27 +120,34 @@ useEffect(() => {
   useEffect(() => {
   if (!selectedTournament) return;
 
-  const q = query(
-    collection(db, "tournaments", selectedTournament.id, "participants"),
-    orderBy("performance.pnl", "desc")
-  );
+ const q = collection(
+  db,
+  "tournaments",
+  selectedTournament.id,
+  "participants"
+);
 
-const unsub = onSnapshot(q, (snap) => {
-console.log("PARTICIPANTS SNAPSHOT SIZE:", snap.size);
+ const unsub = onSnapshot(q, (snap) => {
+  const startBalance = selectedTournament.startingBalance ?? 0;
+
   const list: Participant[] = snap.docs.map((d) => {
-  console.log("RAW PARTICIPANT DOC:", d.id, d.data());
     const data = d.data() as ParticipantDoc;
+
+    const balance = Number(data.balance ?? 0);
+    const rebuy = Number(data.rebuyInjectedTotal ?? 0);
 
     return {
       id: d.id,
       ...data,
-      balance: data.balance ?? 0,
-      pnl: data.pnl ?? data.performance?.pnl ?? 0,
+      balance,
+      pnl: balance - startBalance - rebuy,
       roi: data.roi ?? data.performance?.roi ?? 0,
       trades: data.trades ?? data.performance?.trades ?? 0,
       winRate: data.winRate ?? data.performance?.winRate ?? 0,
     };
   });
+
+  list.sort((a, b) => (b.pnl ?? 0) - (a.pnl ?? 0));
 
   setParticipants(list);
 });
@@ -260,7 +275,14 @@ paidOut: true }
   }
 };
 // 🔥 FIX: fast lookup map so we NEVER depend on .find()
-const payoutMap = selectedTournament?.payoutStructure
+const payoutMap: Record<number, number> = {};
+
+(selectedTournament?.payoutStructure ?? []).forEach((p) => {
+  payoutMap[p.rank] =
+    selectedTournament?.prizeModel === "dynamic"
+      ? ((selectedTournament.prizePool ?? 0) * (p.percentage ?? 0)) / 100
+      : p.amount;
+});
 
 console.log("PAYOUT MAP:", payoutMap);
 console.log("PAYOUT STRUCTURE RAW:", selectedTournament?.payoutStructure);
