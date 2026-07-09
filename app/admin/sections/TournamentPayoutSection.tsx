@@ -233,20 +233,43 @@ const processFullPayout = async () => {
         }
       );
 
-   const text = await res.text();
-console.log("PAYOUT RESPONSE:", text);
+  const text = await res.text();
 
-      if (!res.ok) {
-        throw new Error(text || "Payout failed");
-      }
+console.log("PAYOUT RESPONSE:", {
+  status: res.status,
+  body: text,
+});
 
-      alert("Tournament payout completed");
+if (!res.ok) {
+  throw new Error(text || "Payout failed");
+}
 
-      setSelectedTournament({
-        ...selectedTournament,
+let data;
+
+try {
+  data = JSON.parse(text);
+} catch {
+  data = null;
+}
+
+// only trust backend success
+if (!data || data.success !== true) {
+  throw new Error(
+    data?.message || "Payout failed"
+  );
+}
+
+alert("Tournament payout completed");
+
+setSelectedTournament(prev =>
+  prev
+    ? {
+        ...prev,
         paidOut: true,
         payoutLocked: true,
-      });
+      }
+    : prev
+);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Unknown error";
