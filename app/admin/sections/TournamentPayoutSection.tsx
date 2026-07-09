@@ -261,13 +261,6 @@ paidOut: true }
 };
 // 🔥 FIX: fast lookup map so we NEVER depend on .find()
 const payoutMap = selectedTournament?.payoutStructure
-  ? Object.fromEntries(
-      selectedTournament.payoutStructure.map((p) => [
-        p.rank,
-        p.amount,
-      ])
-    )
-  : {};
 
 console.log("PAYOUT MAP:", payoutMap);
 console.log("PAYOUT STRUCTURE RAW:", selectedTournament?.payoutStructure);
@@ -459,13 +452,9 @@ return (
   });
 
   // skip if no payout defined for this rank
-  if (!payoutAmount) {
-    console.log("SKIPPING PARTICIPANT (NO PAYOUT):", {
-      rank,
-      participantId: p.id,
-    });
-    return null;
-  }
+ if (rank > (selectedTournament?.payoutStructure?.length ?? 0)) {
+  return null;
+}
 
   return (
     <div key={p.id} style={styles.tableRow}>

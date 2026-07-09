@@ -273,7 +273,10 @@ Math.max(0,Number(p.percentage))
       ? "dynamic"
       : "sponsored",
         startingBalance: sb,
-        prizePool: prize,
+        prizePool:
+  formPrizeMode === "pool"
+    ? 0
+    : prize,
        payoutStructure: safePayouts,
         entryFee: entry,
         rebuyFee: rebuy,
