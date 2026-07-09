@@ -13,7 +13,8 @@ interface Tournament {
   id: string;
   name?: string;
 
-  prizeModel?: "sponsored" | "pool";
+ prizeModel?: "sponsored" | "dynamic";
+collectedFunds?: number;
   prizePool?: number;
 
   endTime: number;
@@ -282,19 +283,24 @@ paidOut: true }
   }
 };
 // 🔥 FIX: fast lookup map so we NEVER depend on .find()
-const payoutMap: Record<number, number> = {};
+ const payoutMap: Record<number, number> = {};
 
 (selectedTournament?.payoutStructure ?? []).forEach((p) => {
 
-  if (selectedTournament?.prizeModel === "pool") {
+  if (selectedTournament?.prizeModel === "dynamic") {
+
+    const pool =
+      selectedTournament.collectedFunds ??
+      selectedTournament.prizePool ??
+      0;
 
     payoutMap[p.rank] =
-      ((selectedTournament.prizePool ?? 0) *
-      (p.percentage ?? 0)) / 100;
+      pool * ((p.percentage ?? 0) / 100);
 
   } else {
 
-    payoutMap[p.rank] = Number(p.amount ?? 0);
+    payoutMap[p.rank] =
+      Number(p.amount ?? 0);
 
   }
 
@@ -337,11 +343,12 @@ return (
     </div>
 
     <div style={{ color: "#999", fontSize: 12 }}>
-      Prize Pool:{" "}
-      {(selectedTournament?.payoutStructure ?? []).reduce(
-  (a, b) => a + (b.amount ?? 0),
-  0
-)} T
+  Prize Pool:{" "}
+{
+ selectedTournament.prizeModel === "dynamic"
+ ? formatNum(selectedTournament.collectedFunds ?? 0)
+ : formatNum(selectedTournament.prizePool ?? 0)
+} $
     </div>
   </div>
 )}
