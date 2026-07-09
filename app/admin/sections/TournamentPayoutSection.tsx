@@ -150,29 +150,50 @@ if(selectedTournamentId){
   const list: Participant[] = snap.docs.map((d) => {
     const data = d.data() as ParticipantDoc;
 
-    const balance = Number(data.balance ?? 0);
-    const rebuy = Number(data.rebuyInjectedTotal ?? 0);
+  
+  return {
+  id: d.id,
+  ...data,
 
-    return {
-      id: d.id,
-      ...data,
-       payoutStatus:
-   data.payoutStatus ?? 
-   (data.paidOut ? "paid" : "pending"),
+  payoutStatus:
+    data.payoutStatus ??
+    (data.paidOut ? "paid" : "pending"),
 
- paidOut:
-   data.paidOut ?? false,
-      balance,
-      pnl: balance - startBalance - rebuy,
-      roi: data.roi ?? data.performance?.roi ?? 0,
-      trades: data.trades ?? data.performance?.trades ?? 0,
-      winRate: data.winRate ?? data.performance?.winRate ?? 0,
-    };
+  paidOut:
+    data.paidOut ?? false,
+
+  balance: Number(data.balance ?? 0),
+
+  pnl:
+    data.performance?.pnl ?? 0,
+
+  roi:
+    data.performance?.roi ?? 0,
+
+  trades:
+    data.performance?.trades ?? 0,
+
+  winRate:
+    data.performance?.winRate ?? 0,
+};
   });
 
-  list.sort((a, b) => (b.pnl ?? 0) - (a.pnl ?? 0));
+const sortedParticipants = list.sort((a, b) => {
 
-  setParticipants(list);
+  const aScore =
+    (a.balance ?? 0) -
+    startBalance -
+    (a.rebuyInjectedTotal ?? 0);
+
+  const bScore =
+    (b.balance ?? 0) -
+    startBalance -
+    (b.rebuyInjectedTotal ?? 0);
+
+  return bScore - aScore;
+});
+
+setParticipants(sortedParticipants);
 });
 
   return () => unsub();
@@ -346,22 +367,6 @@ const paySingleParticipant = async (participantId: string) => {
 console.log("PAYOUT MAP:", payoutMap);
 console.log("PAYOUT STRUCTURE RAW:", selectedTournament?.payoutStructure);
  
-const startBalance = selectedTournament?.startingBalance ?? 0;
-
-const sortedParticipants = [...participants].sort((a, b) => {
-  const aPerformance =
-    (a.balance ?? 0) -
-    startBalance -
-    (a.rebuyInjectedTotal ?? 0);
-
-  const bPerformance =
-    (b.balance ?? 0) -
-    startBalance -
-    (b.rebuyInjectedTotal ?? 0);
-
-  return bPerformance - aPerformance;
-});
-
 return (
    
     <div style={styles.container}>
@@ -526,7 +531,7 @@ return (
   <div>📌 Status</div>
   <div>⚡ Action</div>
 </div>
-      {sortedParticipants.map((p, i) => {
+      {participants.map((p, i) => {
   const rank = i + 1;
   const payoutAmount = payoutMap[rank] ?? 0;
 
@@ -562,18 +567,14 @@ return (
         {formatNum(p.balance ?? 0)} T
       </div>
 
-      <div style={styles.performance}>
-        {((p.balance ?? 0) -
-          (selectedTournament?.startingBalance ?? 0) -
-          (p.rebuyInjectedTotal ?? 0)) >= 0
-          ? "+"
-          : ""}
-        {formatNum(
-          (p.balance ?? 0) -
-          (selectedTournament?.startingBalance ?? 0) -
-          (p.rebuyInjectedTotal ?? 0)
-        )} T
-      </div>
+     <div style={styles.performance}>
+  {(p.performance?.pnl ?? p.pnl ?? 0) >= 0
+    ? "+"
+    : ""}
+  {formatNum(
+    p.performance?.pnl ?? p.pnl ?? 0
+  )} T
+</div>
 
       <div style={styles.amount}>
         {formatNum(payoutAmount)} $
