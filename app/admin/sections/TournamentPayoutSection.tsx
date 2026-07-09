@@ -85,6 +85,7 @@ const formatNum = (value?: number, decimals = 2) => {
   return Number(value).toFixed(decimals);
 };
   // 🔹 Load finished tournaments
+const selectedTournamentId = selectedTournament?.id;
 
 useEffect(() => {
   const unsub = onSnapshot(collection(db, "tournaments"), (snap) => {
@@ -95,12 +96,8 @@ useEffect(() => {
        return {
  id: d.id,
  ...data,
- prizePool:
+prizePool:
    data.prizePool ??
-   data.payoutStructure?.reduce(
-     (sum: number, p: { amount?: number } ) => sum + Number(p.amount || 0),
-     0
-   ) ??
    0,
 };
       })
@@ -117,12 +114,24 @@ useEffect(() => {
 
   return isEnded;
 });
+setTournaments(list);
 
-    setTournaments(list);
+
+if(selectedTournamentId){
+
+ const updated = list.find(
+   t => t.id === selectedTournamentId
+ );
+
+ if(updated){
+   setSelectedTournament(updated);
+ }
+
+}
   });
 
   return () => unsub();
-}, []);
+}, [selectedTournamentId]); 
 
   // 🔹 Load participants
   useEffect(() => {
@@ -147,6 +156,12 @@ useEffect(() => {
     return {
       id: d.id,
       ...data,
+       payoutStatus:
+   data.payoutStatus ?? 
+   (data.paidOut ? "paid" : "pending"),
+
+ paidOut:
+   data.paidOut ?? false,
       balance,
       pnl: balance - startBalance - rebuy,
       roi: data.roi ?? data.performance?.roi ?? 0,
@@ -220,66 +235,88 @@ console.log("PAYOUT RESPONSE:", text);
       setLoadingPayout(false);
     }
   };
-const paySingleParticipant = async (participantId: string) => {
-  console.log("PAY CLICKED:", {
-  participantId,
-  tournamentId: selectedTournament?.id,
-});
-  if (!selectedTournament) return;
 
-  if (payingId) return; // prevent double click
-  setPayingId(participantId);
+const paySingleParticipant = async (participantId: string) => {
+
+  if (!selectedTournament) {
+    alert("No tournament selected");
+    return;
+  }
+
+  if (payingId) {
+    return;
+  }
 
   const auth = getAuth();
   const user = auth.currentUser;
 
   if (!user) {
-    alert("Admin not authenticated");
-    return;
-  }
-
+  alert("Admin not authenticated");
+  setPayingId(null);
+  return;
+}
   try {
+
+    setPayingId(participantId);
+
+
     const token = await user.getIdToken();
+
 
     const res = await fetch(
       `${API}/admin/pay-participant`,
       {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          Authorization:`Bearer ${token}`,
         },
-        body: JSON.stringify({
-          tournamentId: selectedTournament.id,
+
+        body:JSON.stringify({
+          tournamentId:selectedTournament.id,
           participantId,
-        }),
+        })
       }
     );
 
-  const text = await res.text();
-console.log("PAY API RESPONSE:", {
-  status: res.status,
-  body: text,
-});
 
-    if (!res.ok) throw new Error(text);
+    const text = await res.text();
 
-    // 🔥 optimistic UI update
-    setParticipants((prev) =>
-      prev.map((p) =>
-        p.id === participantId
-          ? { ...p, payoutStatus: "paid",
-paidOut: true }
-          : p
-      )
-    );
+
+    console.log("PAY RESPONSE",{
+      status:res.status,
+      body:text
+    });
+
+
+
+    if(!res.ok){
+      throw new Error(text || "Payment failed");
+    }
+
 
     alert("Payment successful");
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Unknown error";
 
-    alert(message);
+
+    // DO NOT optimistic update
+    // Firestore listener will update UI
+
+
+  }
+  catch(error){
+
+    console.error(error);
+
+    alert(
+      error instanceof Error
+      ? error.message
+      : "Payment failed"
+    );
+
+  }
+  finally{
+    // IMPORTANT
+    setPayingId(null);
   }
 };
 // 🔥 FIX: fast lookup map so we NEVER depend on .find()
@@ -289,10 +326,10 @@ paidOut: true }
 
   if (selectedTournament?.prizeModel === "dynamic") {
 
-    const pool =
-      selectedTournament.collectedFunds ??
-      selectedTournament.prizePool ??
-      0;
+   const pool =
+      selectedTournament.prizeModel === "dynamic"
+        ? selectedTournament.collectedFunds ?? 0
+        : selectedTournament.prizePool ?? 0;
 
     payoutMap[p.rank] =
       pool * ((p.percentage ?? 0) / 100);
@@ -373,12 +410,16 @@ return (
     </strong>
   </div>
 
-  <div style={styles.summaryCard}>
-    <div>Prize Pool</div>
-    <strong>
-      {selectedTournament?.prizePool ?? 0} $
-    </strong>
-  </div>
+ <div style={styles.summaryCard}>
+  <div>Prize Pool</div>
+  <strong>
+    {
+      selectedTournament?.prizeModel === "dynamic"
+        ? selectedTournament?.collectedFunds ?? 0
+        : selectedTournament?.prizePool ?? 0
+    } $
+  </strong>
+</div>
 
   <div style={styles.summaryCard}>
     <div>Processed</div>
