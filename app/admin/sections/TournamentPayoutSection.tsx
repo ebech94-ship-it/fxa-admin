@@ -13,7 +13,7 @@ interface Tournament {
   id: string;
   name?: string;
 
-  prizeModel?: "sponsored" | "dynamic";
+  prizeModel?: "sponsored" | "pool";
   prizePool?: number;
 
   endTime: number;
@@ -91,10 +91,17 @@ useEffect(() => {
       .map((d) => {
         const data = d.data() as TournamentDoc;
 
-        return {
-          id: d.id,
-          ...data,
-        };
+       return {
+ id: d.id,
+ ...data,
+ prizePool:
+   data.prizePool ??
+   data.payoutStructure?.reduce(
+     (sum: number, p: { amount?: number } ) => sum + Number(p.amount || 0),
+     0
+   ) ??
+   0,
+};
       })
      .filter((t) => {
   const isEnded = Date.now() > t.endTime;
@@ -278,10 +285,19 @@ paidOut: true }
 const payoutMap: Record<number, number> = {};
 
 (selectedTournament?.payoutStructure ?? []).forEach((p) => {
-  payoutMap[p.rank] =
-    selectedTournament?.prizeModel === "dynamic"
-      ? ((selectedTournament.prizePool ?? 0) * (p.percentage ?? 0)) / 100
-      : p.amount;
+
+  if (selectedTournament?.prizeModel === "pool") {
+
+    payoutMap[p.rank] =
+      ((selectedTournament.prizePool ?? 0) *
+      (p.percentage ?? 0)) / 100;
+
+  } else {
+
+    payoutMap[p.rank] = Number(p.amount ?? 0);
+
+  }
+
 });
 
 console.log("PAYOUT MAP:", payoutMap);
@@ -353,7 +369,7 @@ return (
   <div style={styles.summaryCard}>
     <div>Prize Pool</div>
     <strong>
-      {selectedTournament?.payoutStructure?.reduce((a, b) => a + b.amount, 0) ?? 0} T
+      {selectedTournament?.prizePool ?? 0} $
     </strong>
   </div>
 
