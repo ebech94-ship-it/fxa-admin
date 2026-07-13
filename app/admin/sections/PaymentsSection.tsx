@@ -67,7 +67,9 @@ console.log("type =", typeof transactions);
       ) : (
         transactions.map((t) => (
           <div key={t.id} style={styles.card}>
-            <div style={styles.username}>{t.username || t.userId}</div>
+          <div style={styles.username}>
+  {t.publicId || t.username || t.userId || "Unknown"}
+</div>
             <div style={styles.amount}>
   ${Number(t.amount || 0).toFixed(2)}
 </div>
@@ -82,7 +84,9 @@ console.log("type =", typeof transactions);
 
      <div style={styles.meta}>ID: {t.id}</div>
 <div style={styles.meta}>Public ID: {t.publicId || "N/A"}</div>
-<div style={styles.meta}>Username: {t.username || "Unknown"}</div>
+<div style={styles.meta}>
+  User: {t.publicId || t.username || t.userId || "Unknown"}
+</div>
           </div>
         ))
       )}

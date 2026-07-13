@@ -12,6 +12,7 @@ interface Transaction {
   id: string;
   type: string;
   status: string;
+    publicId?: string;
   username?: string;
   amount: number;
   createdAt?: string | number | Date | null;
@@ -205,7 +206,7 @@ const d = new Date(dateValue as string | number | Date);
               >
                 {tx.status}
               </div>
-              <div style={styles.colUser}>{tx.username || "Unknown"}</div>
+              <div style={styles.colUser}>{tx.publicId || tx.username || "Unknown"}</div>
               <div style={styles.colAmount}>
   ${Number(tx.amount || 0).toFixed(2)}
 </div>

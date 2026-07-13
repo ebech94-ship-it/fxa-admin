@@ -19,6 +19,34 @@ interface AdminUser {
   frozen: boolean;
   joinedTournaments: unknown[];
   createdAt?: unknown;
+
+  username?: string;
+  displayName?: string;
+  publicId?: string;
+
+  phoneNumbers?: string[];
+  country?: string;
+
+  accounts?: {
+    real?: {
+      balance?: number;
+    };
+  };
+
+  performance?: {
+    trades?: number;
+    wins?: number;
+    losses?: number;
+    pnl?: number;
+    roi?: number;
+    winRate?: number;
+  };
+
+  referrals?: {
+    total?: number;
+    successful?: number;
+    points?: number;
+  };
 }
 
 /* ---------------- DB ---------------- */
@@ -48,27 +76,99 @@ export default function UsersPage() {
 
     const unsub = onSnapshot(q, (snap) => {
       const list: AdminUser[] = snap.docs.map((d) => {
-        const data = d.data() as {
+  const data = d.data() as {
   email?: string;
+  username?: string;
+  displayName?: string;
+  publicId?: string;
+
+  phoneNumbers?: string[];
+  phoneHistory?: string[];
+
   frozen?: boolean;
   joinedTournaments?: unknown[];
+
   createdAt?: unknown;
+
   accounts?: {
     real?: {
       balance?: number;
     };
   };
+
+  performance?: {
+    trades?: number;
+    wins?: number;
+    losses?: number;
+    pnl?: number;
+    roi?: number;
+    winRate?: number;
+  };
+
+  referrals?: {
+    total?: number;
+    successful?: number;
+    points?: number;
+  };
 };
 
         return {
-          id: d.id,
-          email: data.email ?? "",
-          balance:
-  data.accounts?.real?.balance ?? 0,
-          frozen: data.frozen ?? false,
-          joinedTournaments: data.joinedTournaments ?? [],
-          createdAt: data.createdAt,
-        };
+  id: d.id,
+
+  email: data.email ?? "",
+
+  username:
+    data.username ??
+    data.displayName ??
+    "Unknown",
+
+  displayName:
+    data.displayName ?? "",
+
+  publicId:
+    data.publicId ?? "",
+
+
+  phoneNumbers:
+    data.phoneNumbers ??
+    data.phoneHistory ??
+    [],
+
+
+  balance:
+    data.accounts?.real?.balance ?? 0,
+
+
+  frozen:
+    data.frozen ?? false,
+
+
+  joinedTournaments:
+    data.joinedTournaments ?? [],
+
+
+  performance:
+    data.performance ?? {
+      trades:0,
+      wins:0,
+      losses:0,
+      pnl:0,
+      roi:0,
+      winRate:0,
+    },
+
+
+  referrals:
+    data.referrals ?? {
+      total:0,
+      successful:0,
+      points:0,
+    },
+
+
+  createdAt:
+    data.createdAt,
+};
       });
 
       setUsers(list);
@@ -241,42 +341,300 @@ const totalBalance = filtered.reduce(
   </div>
 </div>
 
-      {/* MODAL */}
-      {open && selected && (
-        <div style={modalStyle}>
-          <div style={boxStyle}>
-            <h3>{selected.email}</h3>
+      {/* USER DETAIL MODAL */}
+{open && selected && (
+<div style={modalStyle}>
 
-            <p>Balance: ${Number(selected.balance || 0).toFixed(2)}</p>
+  <div style={userModalStyle}>
 
-            <select
-              value={mode}
-              onChange={(e) =>
-                setMode(e.target.value as "add" | "subtract")
-              }
-            >
-              <option value="add">Add</option>
-              <option value="subtract">Subtract</option>
-            </select>
+    {/* HEADER */}
+    <div style={modalHeaderStyle}>
+      <div>
+        <h2 style={{margin:0}}>
+          👤 {selected.username || "Unknown User"}
+        </h2>
 
-            <input
-              value={editBalance}
-              onChange={(e) => setEditBalance(e.target.value)}
-              placeholder="Amount"
+        <p style={muted}>
+          Public ID: {selected.publicId || "N/A"}
+        </p>
+      </div>
+
+      <button
+        onClick={()=>setOpen(false)}
+        style={closeTop}
+      >
+        ✕
+      </button>
+    </div>
+
+
+    {/* SCROLL CONTENT */}
+    <div style={modalScroll}>
+
+
+      {/* IDENTITY CARD */}
+      <div style={cardStyle}>
+        <h3>🪪 Identity</h3>
+
+        <CopyRow 
+          label="Firestore ID"
+          value={selected.id}
+        />
+
+        <CopyRow 
+          label="Email"
+          value={selected.email}
+        />
+
+        <CopyRow 
+          label="Username"
+          value={selected.username || "N/A"}
+        />
+
+        <CopyRow 
+          label="Public ID"
+          value={selected.publicId || "N/A"}
+        />
+
+      </div>
+
+
+
+      {/* CONTACT CARD */}
+      <div style={cardStyle}>
+
+        <h3>📱 Telephone Numbers</h3>
+
+        {selected.phoneNumbers?.length ? (
+          selected.phoneNumbers.map((p,i)=>
+            <CopyRow 
+              key={i}
+              label={`Phone ${i+1}`}
+              value={p}
             />
+          )
+        ):(
+          <p style={muted}>
+            No phone history
+          </p>
+        )}
 
-            <button onClick={updateBalance} disabled={loading}>
-              {loading ? "Saving..." : "Update"}
-            </button>
+      </div>
 
-            <button onClick={() => setOpen(false)}>Close</button>
-          </div>
+
+
+
+      {/* FINANCE CARD */}
+      <div style={cardStyle}>
+
+        <h3>💰 Financial</h3>
+
+        <div style={bigValue}>
+          ${Number(selected.balance || 0).toFixed(2)}
         </div>
-      )}
+
+        <p>
+          Status:
+          <span style={{
+            color:selected.frozen
+            ?"red"
+            :"#22c55e"
+          }}>
+            {" "}
+            {selected.frozen
+            ?"Frozen"
+            :"Active"}
+          </span>
+        </p>
+
+      </div>
+
+
+
+
+      {/* PERFORMANCE */}
+      <div style={cardStyle}>
+
+        <h3>📈 Trading Performance</h3>
+
+        <Stat 
+          title="Trades"
+          value={selected.performance?.trades || 0}
+        />
+
+        <Stat 
+          title="Wins"
+          value={selected.performance?.wins || 0}
+        />
+
+        <Stat 
+          title="Losses"
+          value={selected.performance?.losses || 0}
+        />
+
+        <Stat 
+          title="PNL"
+          value={`$${selected.performance?.pnl || 0}`}
+        />
+
+        <Stat 
+          title="ROI"
+          value={`${selected.performance?.roi || 0}%`}
+        />
+
+      </div>
+
+
+
+
+      {/* REFERRAL */}
+      <div style={cardStyle}>
+
+        <h3>🎁 Referral Activity</h3>
+
+
+        <Stat
+          title="Total Referrals"
+          value={selected.referrals?.total || 0}
+        />
+
+
+        <Stat
+          title="Successful"
+          value={selected.referrals?.successful || 0}
+        />
+
+
+        <Stat
+          title="Points"
+          value={selected.referrals?.points || 0}
+        />
+
+      </div>
+
+
+
+
+      {/* BALANCE CONTROL */}
+      <div style={cardStyle}>
+
+        <h3>⚙ Wallet Adjustment</h3>
+
+
+        <select
+          value={mode}
+          onChange={(e)=>
+            setMode(
+              e.target.value as "add"|"subtract"
+            )
+          }
+          style={inputStyle}
+        >
+
+          <option value="add">
+            Add Funds
+          </option>
+
+          <option value="subtract">
+            Subtract Funds
+          </option>
+
+        </select>
+
+
+        <input
+          value={editBalance}
+          onChange={(e)=>
+            setEditBalance(e.target.value)
+          }
+          placeholder="Amount"
+          style={inputStyle}
+        />
+
+
+        <button
+          onClick={updateBalance}
+          disabled={loading}
+          style={updateBtn}
+        >
+          {loading
+          ?"Updating..."
+          :"Update Balance"}
+        </button>
+
+
+      </div>
+
+
+    </div>
+
+
+    <button
+      onClick={()=>setOpen(false)}
+      style={closeBtn}
+    >
+      Close User Details
+    </button>
+
+
+  </div>
+
+</div>
+)}
     </div>
   );
 }
+function CopyRow({
+label,
+value
+}:{
+label:string;
+value:string;
+}){
 
+return(
+<div style={copyRow}>
+
+<span>
+{label}
+</span>
+
+<button
+onClick={()=>{
+navigator.clipboard.writeText(value)
+}}
+style={copyBtn}
+>
+📋
+</button>
+
+<strong>
+{value}
+</strong>
+
+</div>
+)
+
+}
+
+
+
+function Stat({
+title,
+value
+}:{
+title:string;
+value:string|number;
+}){
+
+return(
+<div style={statBox}>
+<span>{title}</span>
+<b>{value}</b>
+</div>
+)
+
+}
 /* ---------------- STYLES (TYPED SAFE) ---------------- */
 
 const modalStyle: React.CSSProperties = {
@@ -288,9 +646,116 @@ const modalStyle: React.CSSProperties = {
   alignItems: "center",
 };
 
-const boxStyle: React.CSSProperties = {
-  background: "#111",
-  padding: 20,
-  color: "#fff",
-  width: 300,
+const userModalStyle:React.CSSProperties={
+background:"#0b1020",
+width:"95%",
+maxWidth:520,
+maxHeight:"90vh",
+borderRadius:20,
+padding:20,
+color:"#fff",
+display:"flex",
+flexDirection:"column"
+};
+
+
+const modalScroll:React.CSSProperties={
+overflowY:"auto",
+paddingRight:5
+};
+
+
+const modalHeaderStyle:React.CSSProperties={
+display:"flex",
+justifyContent:"space-between",
+alignItems:"center",
+marginBottom:15
+};
+
+
+const cardStyle:React.CSSProperties={
+background:"#151b35",
+borderRadius:15,
+padding:15,
+marginBottom:12,
+boxShadow:"0 5px 20px rgba(0,0,0,.3)"
+};
+
+
+const copyRow:React.CSSProperties={
+display:"flex",
+gap:10,
+alignItems:"center",
+marginBottom:8,
+fontSize:13
+};
+
+
+const copyBtn:React.CSSProperties={
+background:"#2563eb",
+color:"#fff",
+border:"none",
+borderRadius:6,
+cursor:"pointer"
+};
+
+
+const statBox:React.CSSProperties={
+display:"flex",
+justifyContent:"space-between",
+padding:8,
+background:"#111827",
+borderRadius:8,
+marginBottom:5
+};
+
+
+const inputStyle:React.CSSProperties={
+width:"100%",
+padding:10,
+marginTop:8,
+borderRadius:8
+};
+
+
+const updateBtn:React.CSSProperties={
+width:"100%",
+marginTop:10,
+padding:12,
+background:"#22c55e",
+color:"#fff",
+border:0,
+borderRadius:10,
+fontWeight:800
+};
+
+
+const closeBtn:React.CSSProperties={
+marginTop:10,
+padding:12,
+background:"#ef4444",
+color:"#fff",
+border:0,
+borderRadius:10,
+fontWeight:800
+};
+
+
+const closeTop:React.CSSProperties={
+background:"transparent",
+color:"#fff",
+border:0,
+fontSize:22
+};
+
+
+const bigValue={
+fontSize:28,
+fontWeight:900,
+color:"#00ffcc"
+};
+
+
+const muted={
+color:"#9ca3af"
 };

@@ -5,9 +5,13 @@ import { useEffect, useState } from "react";
 
 type Transaction = {
   id: string;
-  user: string;
-  amount: number;
+  type: string;
   status: string;
+  username?: string;
+  publicId?: string;
+  user?: string;
+  amount: number;
+  createdAt?: string | number | Date | null;
 };
 
 export default function SystemControlSection() {
@@ -103,7 +107,9 @@ useEffect(() => {
           {pendingTxs.map((t, i) => (
             <div key={t.id} style={styles.row}>
               <div style={styles.index}>{i + 1}.</div>
-              <div style={styles.txUser}>{t.user}</div>
+            <div style={styles.txUser}>
+  {t.publicId || t.username || "Unknown"}
+</div>
              <div style={styles.txAmount}>
   {Number(t.amount || 0).toFixed(2)} $
 </div>

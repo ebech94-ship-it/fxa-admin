@@ -124,12 +124,13 @@ export default function AdminDashboard() {
 
               setExiting(true);
 
-              try {
-                localStorage.removeItem("isAdmin");
+            try {
+  localStorage.removeItem("isAdmin");
 
-                // redirect to your app landing page
-                window.location.href = "/tradinglayout";
-              } catch  {
+  await auth.signOut();
+
+  window.location.href = "/admin/login";
+} catch {
                 alert("Exit failed");
                 setExiting(false);
               }

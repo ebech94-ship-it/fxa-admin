@@ -128,7 +128,7 @@ export default function NotificationsSection() {
 
       const token = await user.getIdToken();
 
-      await fetch(`${API_URL}/admin/send-notification`, {
+      const res = await fetch(`${API_URL}/admin/send-notification`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -136,7 +136,9 @@ export default function NotificationsSection() {
         },
         body: JSON.stringify({ message }),
       });
-
+if (!res.ok) {
+  throw new Error("Notification failed");
+}
       setMessage("");
     } catch {
       alert("Failed to send notification");
