@@ -642,14 +642,14 @@ color:"#facc15"
 <p style={muted}>
 Start:
 {" "}
-{String(t.startTime || "N/A")}
+{formatDate(t.startTime)}
 </p>
 
 
 <p style={muted}>
 End:
 {" "}
-{String(t.endTime || "N/A")}
+{formatDate(t.endTime)}
 </p>
 
 
@@ -860,6 +860,54 @@ return(
 </div>
 )
 
+}
+function formatDate(value: unknown) {
+
+  if (!value) return "N/A";
+
+  let date: Date;
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    "seconds" in value &&
+    typeof (value as { seconds: unknown }).seconds === "number"
+  ) {
+    date = new Date(
+      (value as { seconds: number }).seconds * 1000
+    );
+  }
+
+  else if (typeof value === "number") {
+    date = new Date(value);
+  }
+
+  else if (
+    typeof value === "string" ||
+    value instanceof Date
+  ) {
+    date = new Date(value);
+  }
+
+  else {
+    return "Invalid date";
+  }
+
+
+  if (isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+
+
+  return date.toLocaleString("en-CM", {
+    day:"2-digit",
+    month:"short",
+    year:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:false,
+    timeZone:"Africa/Douala"
+  });
 }
 /* ---------------- STYLES (TYPED SAFE) ---------------- */
 
