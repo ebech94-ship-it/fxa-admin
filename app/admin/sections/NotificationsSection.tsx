@@ -8,8 +8,8 @@ import {
   onSnapshot,
   orderBy,
   query,
-  
-  updateDoc,
+  serverTimestamp,
+  updateDoc, addDoc
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../../lib/firebaseConfig";
@@ -117,36 +117,33 @@ export default function NotificationsSection() {
 
   /* ---------------- SEND NOTIFICATION ---------------- */
 
-  const sendNotification = async () => {
-    if (!message.trim()) return;
+   const sendNotification = async () => {
+  if (!message.trim()) return;
 
-    setLoadingNotification(true);
+  setLoadingNotification(true);
 
-    try {
-      const user = getAuth().currentUser;
-      if (!user) return alert("Not logged in");
+  try {
 
-      const token = await user.getIdToken();
+    await addDoc(collection(db, "alerts"), {
+      type: "admin",
+      title: "📢 Admin Announcement",
+      message,
+      priority: "normal",
+      read: false,
+      deleted: false,
+      createdAt: serverTimestamp(),
+    });
 
-      const res = await fetch(`${API_URL}/admin/send-notification`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ message }),
-      });
-if (!res.ok) {
-  throw new Error("Notification failed");
-}
-      setMessage("");
-    } catch {
-      alert("Failed to send notification");
-    } finally {
-      setLoadingNotification(false);
-    }
-  };
 
+    setMessage("");
+
+  } catch (error) {
+    console.error(error);
+    alert("Failed to send notification");
+  } finally {
+    setLoadingNotification(false);
+  }
+};
   /* ---------------- SEND REPLY ---------------- */
 
   const sendReply = async () => {

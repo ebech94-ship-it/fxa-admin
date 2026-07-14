@@ -312,6 +312,7 @@ Math.max(0,Number(p.percentage))
   message: `${formName} is now open for registration.`,
   actionLabel: "Join Now",
   priority: "high",
+   read: false,
   createdAt: serverTimestamp(),
 });
 }

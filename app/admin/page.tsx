@@ -35,7 +35,8 @@ export default function AdminDashboard() {
   const [active, setActive] = useState("Treasury");
  
   const [exiting, setExiting] = useState(false);
-const [menuOpen, setMenuOpen] = useState(true);
+
+const [menuOpen, setMenuOpen] = useState(false);
 
   const router = useRouter();
 
@@ -57,6 +58,21 @@ const [menuOpen, setMenuOpen] = useState(true);
 
   checkAdmin();
 }, [router]);
+useEffect(() => {
+  const handleResize = () => {
+    if (window.innerWidth >= 768) {
+      setMenuOpen(true);
+    }
+  };
+
+  handleResize();
+
+  window.addEventListener("resize", handleResize);
+
+  return () =>
+    window.removeEventListener("resize", handleResize);
+
+}, []);
 
   // rest of your file continues unchanged...
 
@@ -99,7 +115,14 @@ const [menuOpen, setMenuOpen] = useState(true);
         return <TreasurySection />;
     }
   };
+const selectSection = (sec: string) => {
+  setActive(sec);
 
+  // close sidebar on phone
+  if (window.innerWidth < 768) {
+    setMenuOpen(false);
+  }
+};
   return (
     <div style={styles.container}>
       {/* SIDEBAR */}
@@ -115,7 +138,7 @@ const [menuOpen, setMenuOpen] = useState(true);
           {SECTIONS.map((sec) => (
             <div
               key={sec}
-              onClick={() => setActive(sec)}
+              onClick={() => selectSection(sec)}
               style={{
                 ...styles.item,
                 ...(active === sec ? styles.activeItem : {}),
@@ -185,23 +208,24 @@ const styles: { [key: string]: React.CSSProperties } = {
   flexDirection: "column",
   position: "fixed",
   left:0,
-  top:0,
+  top:30,
   bottom:0,
   zIndex:1000,
   transition:"transform .3s ease",
 },
 menuBtn:{
   position:"fixed",
-  top:15,
+  top:10,
   left:15,
   zIndex:1100,
   background:"#222",
   color:"#fff",
   border:"none",
-  borderRadius:8,
+  borderRadius:18,
   padding:"10px 14px",
-  fontSize:22,
+  fontSize:18,
   cursor:"pointer",
+  width: 30
 },
 
   scroll: {
