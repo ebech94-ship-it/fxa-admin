@@ -564,7 +564,56 @@ const totalBalance = filtered.reduce(
 
 
       </div>
+{/* TRANSACTION HISTORY */}
 
+<div style={cardStyle}>
+
+  <h3>💳 Deposit & Withdrawal History</h3>
+
+  <div
+    style={{
+      overflowX: "auto",
+      marginTop: 10,
+    }}
+  >
+
+    <table
+      style={{
+        width: "100%",
+        minWidth: 750,
+        borderCollapse: "collapse",
+        fontSize: 13,
+      }}
+    >
+
+      <thead>
+
+        <tr
+          style={{
+            background: "#111827",
+          }}
+        >
+          <th>Date</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Phone</th>
+          <th>Reference</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {/* transactions go here */}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</div>
 
     </div>
 
