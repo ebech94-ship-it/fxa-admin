@@ -33,7 +33,9 @@ const SECTIONS = [
 
 export default function AdminDashboard() {
   const [active, setActive] = useState("Treasury");
+ 
   const [exiting, setExiting] = useState(false);
+const [menuOpen, setMenuOpen] = useState(true);
 
   const router = useRouter();
 
@@ -101,7 +103,14 @@ export default function AdminDashboard() {
   return (
     <div style={styles.container}>
       {/* SIDEBAR */}
-      <div style={styles.sidebar}>
+    <div
+  style={{
+    ...styles.sidebar,
+    transform: menuOpen
+      ? "translateX(0)"
+      : "translateX(-100%)",
+  }}
+>
         <div style={styles.scroll}>
           {SECTIONS.map((sec) => (
             <div
@@ -146,7 +155,14 @@ export default function AdminDashboard() {
       </div>
 
       {/* MAIN CONTENT */}
-      <div style={styles.main}>
+   <div style={styles.main}>
+
+<button
+  onClick={() => setMenuOpen(!menuOpen)}
+  style={styles.menuBtn}
+>
+  ☰
+</button>
         <div style={styles.content}>{renderSection()}</div>
       </div>
     </div>
@@ -162,12 +178,31 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   /* SIDEBAR */
   sidebar: {
-    width: 260,
-    background: "#111",
-    borderRight: "1px solid #222",
-    display: "flex",
-    flexDirection: "column",
-  },
+  width: 260,
+  background: "#111",
+  borderRight: "1px solid #222",
+  display: "flex",
+  flexDirection: "column",
+  position: "fixed",
+  left:0,
+  top:0,
+  bottom:0,
+  zIndex:1000,
+  transition:"transform .3s ease",
+},
+menuBtn:{
+  position:"fixed",
+  top:15,
+  left:15,
+  zIndex:1100,
+  background:"#222",
+  color:"#fff",
+  border:"none",
+  borderRadius:8,
+  padding:"10px 14px",
+  fontSize:22,
+  cursor:"pointer",
+},
 
   scroll: {
     overflowY: "auto",
