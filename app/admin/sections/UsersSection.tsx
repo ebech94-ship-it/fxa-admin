@@ -28,10 +28,25 @@ interface AdminUser {
   country?: string;
 
   accounts?: {
-    real?: {
+  real?: {
+    balance?: number;
+  };
+  demo?: {
+    balance?: number;
+  };
+
+  tournaments?: {
+    [tournamentId: string]: {
+      name?: string;
+      badge?: string;
+      startTime?: unknown;
+      endTime?: unknown;
+      registeredAt?: unknown;
+      rebuys?: number;
       balance?: number;
     };
   };
+};
 
   performance?: {
     trades?: number;
@@ -41,6 +56,17 @@ interface AdminUser {
     roi?: number;
     winRate?: number;
   };
+
+  tournaments?: {
+  [tournamentId:string]: {
+    name?: string;
+    badge?: string;
+    startTime?: unknown;
+    endTime?: unknown;
+    registeredAt?: unknown;
+    rebuys?: number;
+  }
+};
 
   referrals?: {
     total?: number;
@@ -90,11 +116,25 @@ export default function UsersPage() {
 
   createdAt?: unknown;
 
-  accounts?: {
-    real?: {
+ accounts?: {
+  real?: {
+    balance?: number;
+  };
+demo?: {
+    balance?: number;
+  };
+  tournaments?: {
+    [tournamentId: string]: {
+      name?: string;
+      badge?: string;
+      startTime?: unknown;
+      endTime?: unknown;
+      registeredAt?: unknown;
+      rebuys?: number;
       balance?: number;
     };
   };
+};
 
   performance?: {
     trades?: number;
@@ -138,6 +178,8 @@ export default function UsersPage() {
   balance:
     data.accounts?.real?.balance ?? 0,
 
+accounts:
+ data.accounts ?? {},
 
   frozen:
     data.frozen ?? false,
@@ -164,7 +206,8 @@ export default function UsersPage() {
       successful:0,
       points:0,
     },
-
+tournaments:
+    data.accounts?.tournaments ?? {},
 
   createdAt:
     data.createdAt,
@@ -429,9 +472,67 @@ const totalBalance = filtered.reduce(
 
         <h3>💰 Financial</h3>
 
-        <div style={bigValue}>
-          ${Number(selected.balance || 0).toFixed(2)}
-        </div>
+        <div
+style={{
+display:"grid",
+gridTemplateColumns:"1fr 1fr",
+gap:10
+}}
+>
+
+
+<div
+style={{
+background:"#111827",
+padding:15,
+borderRadius:12
+}}
+>
+
+<p style={muted}>
+💵 Real Account
+</p>
+
+<h2 style={{
+color:"#00ffcc",
+margin:0
+}}>
+$
+{Number(
+selected.accounts?.real?.balance || 0
+).toFixed(2)}
+</h2>
+
+</div>
+
+
+
+<div
+style={{
+background:"#111827",
+padding:15,
+borderRadius:12
+}}
+>
+
+<p style={muted}>
+🎮 Demo Account
+</p>
+
+<h2 style={{
+color:"#60a5fa",
+margin:0
+}}>
+$
+{Number(
+selected.accounts?.demo?.balance || 0
+).toFixed(2)}
+</h2>
+
+</div>
+
+
+</div>
 
         <p>
           Status:
@@ -484,7 +585,83 @@ const totalBalance = filtered.reduce(
 
       </div>
 
+{/* TOURNAMENT ENGAGEMENT */}
 
+<div style={cardStyle}>
+
+<h3>🏆 Tournament Engagement</h3>
+
+
+{
+Object.keys(selected.tournaments || {}).length === 0 ? (
+
+<p style={muted}>
+No tournaments participated yet
+</p>
+
+) : (
+
+Object.entries(selected.tournaments || {})
+.map(([id,t])=>(
+
+<div
+key={id}
+style={{
+background:"#111827",
+padding:12,
+borderRadius:10,
+marginBottom:10
+}}
+>
+
+
+<h4 style={{
+margin:0,
+color:"#facc15"
+}}>
+{t.name || "Tournament"}
+</h4>
+
+
+<p>
+🎖 Badge:
+{" "}
+{t.badge || "Registered"}
+</p>
+
+
+<p>
+🔄 Rebuys:
+{" "}
+<b>
+{t.rebuys || 0}
+</b>
+</p>
+
+
+<p style={muted}>
+Start:
+{" "}
+{String(t.startTime || "N/A")}
+</p>
+
+
+<p style={muted}>
+End:
+{" "}
+{String(t.endTime || "N/A")}
+</p>
+
+
+</div>
+
+))
+
+)
+
+}
+
+</div>
 
 
       {/* REFERRAL */}
@@ -798,11 +975,7 @@ fontSize:22
 };
 
 
-const bigValue={
-fontSize:28,
-fontWeight:900,
-color:"#00ffcc"
-};
+
 
 
 const muted={
