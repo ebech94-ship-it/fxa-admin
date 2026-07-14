@@ -239,7 +239,7 @@ menuBtn:{
     color: "#fff",
     cursor: "pointer",
     borderRadius: 6,
-    fontSize: 14,
+    fontSize: 18,
   },
 
   activeItem: {
