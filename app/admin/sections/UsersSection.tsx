@@ -7,7 +7,7 @@ import {
   orderBy,
   query,
 } from "firebase/firestore";
-import { db } from "../../../lib/firebaseConfig";
+import { db , auth} from "../../../lib/firebaseConfig";
 import { useEffect, useState } from "react";
 
 /* ---------------- TYPES ---------------- */
@@ -218,10 +218,27 @@ tournaments:
 
       setUsers(list);
       setFiltered(list);
-      fetch("https://forexapp2-backend.onrender.com/api/treasury/balances")
-  .then((r) => r.json())
-  .then((d) => setTreasuryBalance(Number(d.balance || 0)))
-  .catch(() => {});
+
+      
+      const user = auth.currentUser;
+
+if (user) {
+  user.getIdToken().then((token) => {
+    fetch(`${BACKEND_URL}/api/treasury/balances`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        console.log("USERS TREASURY:", d);
+        setTreasuryBalance(Number(d.balance || 0));
+      })
+      .catch((err) => {
+        console.log("Treasury fetch error:", err);
+      });
+  });
+}
     });
 
     return () => unsub();
