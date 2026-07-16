@@ -13,15 +13,19 @@ import {
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import { db } from "../../../lib/firebaseConfig";
+import Image from "next/image";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 /* ---------------- TYPES ---------------- */
 
 type Notification = {
   id: string;
   message?: string;
+  imageUrl?: string;
+  status?: "draft" | "published";
+  scheduledAt?: unknown;
   createdAt?: unknown;
 };
-
 type SupportThread = {
   id: string;
   lastMessage?: string;
@@ -61,6 +65,11 @@ export default function NotificationsSection() {
   const [editOpen, setEditOpen] = useState(false);
   const [editMessage, setEditMessage] = useState("");
   const [selectedId, setSelectedId] = useState("");
+
+
+ 
+  const [imageFile, setImageFile] = useState<File | null>(null);
+const [scheduleDate, setScheduleDate] = useState("");
 
   /* ---------------- NOTIFICATIONS ---------------- */
 
@@ -117,29 +126,30 @@ export default function NotificationsSection() {
 
   /* ---------------- SEND NOTIFICATION ---------------- */
 
-   const sendNotification = async () => {
+  const sendNotification = async () => {
   if (!message.trim()) return;
 
   setLoadingNotification(true);
 
   try {
-
     await addDoc(collection(db, "alerts"), {
       type: "admin",
       title: "📢 Admin Announcement",
       message,
-      priority: "normal",
-      read: false,
-      deleted: false,
+      imageUrl: await uploadImage(),
+      status: scheduleDate ? "draft" : "published",
+      scheduledAt: scheduleDate
+        ? new Date(scheduleDate)
+        : serverTimestamp(),
       createdAt: serverTimestamp(),
     });
 
-
     setMessage("");
+   
+    setScheduleDate("");
 
   } catch (error) {
     console.error(error);
-    alert("Failed to send notification");
   } finally {
     setLoadingNotification(false);
   }
@@ -208,6 +218,20 @@ export default function NotificationsSection() {
   };
 
   const isNotifications = activeTab === "notifications";
+  const uploadImage = async () => {
+  if (!imageFile) return "";
+
+  const storage = getStorage();
+
+  const imageRef = ref(
+    storage,
+    `adminAlerts/${Date.now()}-${imageFile.name}`
+  );
+
+  await uploadBytes(imageRef, imageFile);
+
+  return await getDownloadURL(imageRef);
+};
 
   return (
     <div style={styles.container}>
@@ -247,7 +271,18 @@ export default function NotificationsSection() {
             style={styles.input}
             placeholder="Write notification..."
           />
-
+<input
+ type="file"
+ accept="image/*"
+ onChange={(e)=>setImageFile(e.target.files?.[0] || null)}
+ style={styles.input}
+/>
+<input
+ type="datetime-local"
+ value={scheduleDate}
+ onChange={(e)=>setScheduleDate(e.target.value)}
+ style={styles.input}
+/>
           <button
             onClick={sendNotification}
             style={styles.sendBtn}
@@ -264,6 +299,20 @@ export default function NotificationsSection() {
           ? notifications.map((item) => (
               <div key={item.id} style={styles.card}>
                 <p style={styles.msg}>{item.message}</p>
+                {item.imageUrl && (
+ <Image
+  src={item.imageUrl}
+  alt="Admin announcement image"
+  width={600}
+  height={400}
+  style={{
+    width:"100%",
+    height:"auto",
+    borderRadius:10,
+    marginTop:10
+  }}
+/>
+)}
 
                 <div style={styles.cardActions}>
                   <button
