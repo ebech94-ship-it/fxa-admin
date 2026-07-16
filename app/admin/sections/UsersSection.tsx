@@ -87,6 +87,8 @@ export default function UsersPage() {
   const [filtered, setFiltered] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
 
+const [treasuryBalance, setTreasuryBalance] = useState(0);
+
   const [selected, setSelected] = useState<AdminUser | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -216,6 +218,10 @@ tournaments:
 
       setUsers(list);
       setFiltered(list);
+      fetch("https://forexapp2-backend.onrender.com/api/treasury/balances")
+  .then((r) => r.json())
+  .then((d) => setTreasuryBalance(Number(d.balance || 0)))
+  .catch(() => {});
     });
 
     return () => unsub();
@@ -273,6 +279,7 @@ const totalBalance = filtered.reduce(
   (sum, u) => sum + Number(u.balance || 0),
   0
 );
+const netAppBalance = treasuryBalance - totalBalance;
   /* ---------------- UI ---------------- */
 
   return (
@@ -378,12 +385,54 @@ const totalBalance = filtered.reduce(
               ${totalBalance.toFixed(2)}
     </div>
 
-    <div style={{ color: "#fff" }}>
-      Treasury
+    <div></div>
+  </div>
+</div>
+<div style={balanceControlCard}>
+  <h2 style={balanceTitle}>💰 Balance Control</h2>
+
+  <div style={balanceHeader}>
+    <div>Treasury Balance (TB)</div>
+    <div>Total Users Wallets (TUWB)</div>
+    <div>Net App Balance (NAB)</div>
+  </div>
+
+  <div style={balanceRow}>
+    <div
+      style={{
+        color: "#22c55e",
+        fontWeight: 900,
+        textShadow: "0 0 12px rgba(34,197,94,.8)",
+      }}
+    >
+      ${treasuryBalance.toFixed(2)}
+    </div>
+
+    <div
+      style={{
+        color: "#facc15",
+        fontWeight: 900,
+        textShadow: "0 0 12px rgba(250,204,21,.8)",
+      }}
+    >
+      ${totalBalance.toFixed(2)}
+    </div>
+
+    <div
+      style={{
+        color: netAppBalance >= 0 ? "#00ffcc" : "#ef4444",
+        fontWeight: 900,
+        fontSize: 28,
+        textShadow:
+          netAppBalance >= 0
+            ? "0 0 16px rgba(0,255,204,.9)"
+            : "0 0 16px rgba(239,68,68,.9)",
+      }}
+    >
+      ${netAppBalance.toFixed(2)}
     </div>
   </div>
 </div>
-
       {/* USER DETAIL MODAL */}
 {open && selected && (
 <div style={modalStyle}>
@@ -1021,11 +1070,49 @@ color:"#fff",
 border:0,
 fontSize:22
 };
-
-
-
-
-
 const muted={
 color:"#9ca3af"
+};
+const balanceControlCard: React.CSSProperties = {
+  marginTop: 24,
+  borderRadius: 18,
+  overflow: "hidden",
+  background: "linear-gradient(135deg,#111827,#0f172a)",
+  border: "1px solid rgba(0,255,204,.25)",
+  boxShadow:
+    "0 0 25px rgba(0,255,204,.12), 0 8px 30px rgba(0,0,0,.45)",
+};
+
+const balanceTitle: React.CSSProperties = {
+  margin: 0,
+  padding: "18px 20px",
+  color: "#fff",
+  fontSize: 22,
+  fontWeight: 900,
+  letterSpacing: ".5px",
+  borderBottom: "1px solid rgba(255,255,255,.08)",
+};
+
+const balanceHeader: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3,1fr)",
+  padding: "16px",
+  background: "#1e293b",
+  color: "#cbd5e1",
+  fontWeight: 900,
+  fontSize: 14,
+  textTransform: "uppercase",
+  textAlign: "center",
+  letterSpacing: ".8px",
+};
+
+const balanceRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3,1fr)",
+  padding: "24px 16px",
+  background: "#0b1220",
+  textAlign: "center",
+  alignItems: "center",
+  fontSize: 24,
+  fontWeight: 900,
 };
