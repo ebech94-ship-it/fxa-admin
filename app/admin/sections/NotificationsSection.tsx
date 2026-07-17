@@ -825,7 +825,7 @@ draftBtn:{
 
 card:{
  background:"#151922",
- padding:14,
+ padding:18,
  borderRadius:15,
  marginTop:15,
 },
@@ -840,21 +840,14 @@ status:{
 msg:{
  color:"#fff",
  fontSize:16,
- marginTop:10,
- display:"-webkit-box",
- WebkitLineClamp:3,
- WebkitBoxOrient:"vertical",
- overflow:"hidden",
 },
 
 
 cardImage:{
  width:"100%",
- height:300,
+ height:"auto",
  borderRadius:15,
  marginTop:10,
- objectFit:"cover",
- display:"block",
 },
 
 
