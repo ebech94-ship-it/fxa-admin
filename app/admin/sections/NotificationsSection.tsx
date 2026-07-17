@@ -409,13 +409,13 @@ const handleImageSelect = (file: File) => {
 
          {item.imageUrl && (
 
-  <Image
-    src={item.imageUrl}
-    alt="announcement"
-    width={600}
-    height={400}
-    style={styles.cardImage}
-  />
+ <Image
+  src={item.imageUrl}
+  alt="announcement"
+  width={800}
+  height={800}
+  style={styles.cardImage}
+/>
 
 )}
 
@@ -787,8 +787,8 @@ dateInput:{
 
 preview:{
  width:"100%",
- maxHeight:300,
- objectFit:"cover",
+ height:"auto",
+ objectFit:"contain",
  borderRadius:15,
  marginTop:15,
 },
@@ -846,6 +846,8 @@ msg:{
 cardImage:{
  width:"100%",
  height:"auto",
+ maxHeight:700,
+ objectFit:"contain",
  borderRadius:15,
  marginTop:10,
 },
