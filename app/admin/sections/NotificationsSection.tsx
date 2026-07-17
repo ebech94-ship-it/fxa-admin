@@ -407,23 +407,22 @@ const handleImageSelect = (file: File) => {
           </div>
 
 
-          <p style={styles.msg}>
-            {item.message}
-          </p>
+         {item.imageUrl && (
+
+  <Image
+    src={item.imageUrl}
+    alt="announcement"
+    width={600}
+    height={400}
+    style={styles.cardImage}
+  />
+
+)}
 
 
-
-          {item.imageUrl && (
-
-            <Image
-              src={item.imageUrl}
-              alt="announcement"
-              width={600}
-              height={400}
-              style={styles.cardImage}
-            />
-
-          )}
+<p style={styles.msg}>
+  {item.message}
+</p>
 
 
 
@@ -826,7 +825,7 @@ draftBtn:{
 
 card:{
  background:"#151922",
- padding:18,
+ padding:14,
  borderRadius:15,
  marginTop:15,
 },
@@ -841,14 +840,21 @@ status:{
 msg:{
  color:"#fff",
  fontSize:16,
+ marginTop:10,
+ display:"-webkit-box",
+ WebkitLineClamp:3,
+ WebkitBoxOrient:"vertical",
+ overflow:"hidden",
 },
 
 
 cardImage:{
  width:"100%",
- height:"auto",
+ height:300,
  borderRadius:15,
  marginTop:10,
+ objectFit:"cover",
+ display:"block",
 },
 
 
