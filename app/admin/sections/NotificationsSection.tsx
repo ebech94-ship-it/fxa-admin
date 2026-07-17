@@ -129,31 +129,39 @@ const [scheduleDate, setScheduleDate] = useState("");
 
   /* ---------------- SEND NOTIFICATION ---------------- */
 
-  const sendNotification = async (saveDraft = false) => {
+ const sendNotification = async (saveDraft = false) => {
   if (!message.trim()) return;
 
   setLoadingNotification(true);
 
   try {
+    console.log("1️⃣ Send button clicked");
+
+    const imageUrl = await uploadImage();
+    console.log("2️⃣ Image uploaded successfully:", imageUrl);
+
     await addDoc(collection(db, "alerts"), {
       type: "admin",
       title: "📢 Admin Announcement",
       message,
-      imageUrl: await uploadImage(),
+      imageUrl,
       status: saveDraft ? "draft" : "published",
-      scheduledAt: scheduleDate
-  ? new Date(scheduleDate)
-  : null,
+      scheduledAt: scheduleDate ? new Date(scheduleDate) : null,
       createdAt: serverTimestamp(),
     });
 
-    setMessage("");
-   
-    setScheduleDate("");
+    console.log("3️⃣ Alert document saved to Firestore");
 
+    setMessage("");
+    setScheduleDate("");
+    setImageFile(null);
+    setImagePreview("");
+
+    console.log("4️⃣ Form reset complete");
   } catch (error) {
-    console.error(error);
+    console.error("❌ sendNotification error:", error);
   } finally {
+    console.log("5️⃣ Loading finished");
     setLoadingNotification(false);
   }
 };
