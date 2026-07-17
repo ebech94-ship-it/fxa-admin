@@ -282,8 +282,9 @@ menuBtn:{
   },
 
   content: {
-    padding: 16,
-    height: "100%",
-    overflowY: "auto",
-  },
+  padding: 16,
+  paddingTop: 85,
+  height: "100%",
+  overflowY: "auto",
+},
 };
