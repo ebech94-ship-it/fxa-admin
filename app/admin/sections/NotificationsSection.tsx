@@ -217,7 +217,20 @@ const [scheduleDate, setScheduleDate] = useState("");
       alert("Failed to update notification");
     }
   };
+const publishNotification = async (id:string) => {
 
+  try {
+
+    await updateDoc(doc(db,"alerts",id),{
+      status:"published",
+      publishedAt: serverTimestamp(),
+    });
+
+  } catch {
+    alert("Failed to publish");
+  }
+
+};
   const isNotifications = activeTab === "notifications";
 
   const uploadImage = async () => {
@@ -406,29 +419,37 @@ const handleImageSelect = (file: File) => {
 
 
 
-          <div style={styles.cardActions}>
+        <div style={styles.cardActions}>
+
+<button
+onClick={()=>{
+ setSelectedId(item.id);
+ setEditMessage(item.message || "");
+ setEditOpen(true);
+}}
+>
+✏️ Edit
+</button>
 
 
-            <button
-              onClick={()=>{
-                setSelectedId(item.id);
-                setEditMessage(item.message || "");
-                setEditOpen(true);
-              }}
-            >
-              ✏️ Edit
-            </button>
+{item.status === "draft" && (
+
+<button
+onClick={()=>publishNotification(item.id)}
+>
+🚀 Send Now
+</button>
+
+)}
 
 
+<button
+onClick={()=>deleteNotification(item.id)}
+>
+🗑 Delete
+</button>
 
-            <button
-              onClick={()=>deleteNotification(item.id)}
-            >
-              🗑 Delete
-            </button>
-
-
-          </div>
+</div>
 
 
         </div>
@@ -625,11 +646,11 @@ style={styles.sendReplyBtn}
 
 
     {/* EDIT MODAL */}
+{editOpen && (
 
-    {editOpen && (
+<div style={styles.modalOverlay}>
 
-      <div style={styles.modal}>
-
+<div style={styles.modal}>
 
         <h3>
           Edit Notification
@@ -663,10 +684,10 @@ style={styles.sendReplyBtn}
 
 
       </div>
+ 
 
-    )}
-
-
+</div>
+)}
 
   </div>
 );
@@ -840,16 +861,19 @@ input:{
 
 
 modal:{
- position:"fixed",
- top:40,
- left:"50%",
- transform:"translateX(-50%)",
- width:"90%",
- maxWidth:450,
- background:"#151922",
- padding:20,
- borderRadius:20,
- zIndex:2000,
+  position:"fixed",
+  top:"50%",
+  left:"50%",
+  transform:"translate(-50%, -50%)",
+  width:"calc(100% - 32px)",
+  maxWidth:450,
+  maxHeight:"85vh",
+  overflowY:"auto",
+  background:"#151922",
+  padding:20,
+  borderRadius:20,
+  zIndex:2000,
+  boxSizing:"border-box",
 },
 
 
@@ -941,10 +965,10 @@ replyBtn:{
 
 chatModal:{
  position:"fixed",
- top:30,
+ top:"50%",
  left:"50%",
- transform:"translateX(-50%)",
- width:"95%",
+ transform:"translate(-50%, -50%)",
+ width:"calc(100% - 20px)",
  maxWidth:500,
  height:"85vh",
  background:"#0c0f16",
