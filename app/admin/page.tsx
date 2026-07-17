@@ -40,15 +40,24 @@ const sidebarRef = useRef<HTMLDivElement>(null);
 const [menuOpen, setMenuOpen] = useState(false);
 
   const router = useRouter();
-useEffect(() => {
+
+const menuBtnRef = useRef<HTMLButtonElement>(null);
+
+ useEffect(() => {
+
   const handleOutside = (e: MouseEvent) => {
+
+    const target = e.target as Node;
+
     if (
       menuOpen &&
       sidebarRef.current &&
-      !sidebarRef.current.contains(e.target as Node)
+      !sidebarRef.current.contains(target) &&
+      !menuBtnRef.current?.contains(target)
     ) {
       setMenuOpen(false);
     }
+
   };
 
   document.addEventListener("mousedown", handleOutside);
@@ -56,6 +65,7 @@ useEffect(() => {
   return () => {
     document.removeEventListener("mousedown", handleOutside);
   };
+
 }, [menuOpen]);
   useEffect(() => {
   const checkAdmin = async () => {
@@ -75,21 +85,7 @@ useEffect(() => {
 
   checkAdmin();
 }, [router]);
-useEffect(() => {
-  const handleResize = () => {
-    if (window.innerWidth >= 768) {
-      setMenuOpen(true);
-    }
-  };
 
-  handleResize();
-
-  window.addEventListener("resize", handleResize);
-
-  return () =>
-    window.removeEventListener("resize", handleResize);
-
-}, []);
 
   // rest of your file continues unchanged...
 
@@ -199,7 +195,8 @@ const selectSection = (sec: string) => {
    <div style={styles.main}>
 
 <button
-  onClick={() => setMenuOpen(!menuOpen)}
+  ref={menuBtnRef}
+  onClick={() => setMenuOpen(prev => !prev)}
   style={styles.menuBtn}
 >
   ☰
@@ -218,19 +215,20 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
 
   /* SIDEBAR */
-  sidebar: {
-  width: 260,
-  background: "#111",
-  borderRight: "1px solid #222",
-  display: "flex",
-  flexDirection: "column",
-  position: "fixed",
+sidebar:{
+  width:260,
+  background:"#111",
+  borderRight:"1px solid #222",
+  display:"flex",
+  flexDirection:"column",
+  position:"fixed",
   left:0,
   top:30,
   bottom:0,
   zIndex:1000,
   transition:"transform .3s ease",
-},
+  touchAction:"none",
+}, 
 menuBtn:{
   position:"fixed",
   top:12,
