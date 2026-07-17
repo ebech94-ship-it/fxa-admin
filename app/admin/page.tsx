@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebaseConfig";
 
@@ -35,11 +35,28 @@ export default function AdminDashboard() {
   const [active, setActive] = useState("Treasury");
  
   const [exiting, setExiting] = useState(false);
+const sidebarRef = useRef<HTMLDivElement>(null);
 
 const [menuOpen, setMenuOpen] = useState(false);
 
   const router = useRouter();
+useEffect(() => {
+  const handleOutside = (e: MouseEvent) => {
+    if (
+      menuOpen &&
+      sidebarRef.current &&
+      !sidebarRef.current.contains(e.target as Node)
+    ) {
+      setMenuOpen(false);
+    }
+  };
 
+  document.addEventListener("mousedown", handleOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleOutside);
+  };
+}, [menuOpen]);
   useEffect(() => {
   const checkAdmin = async () => {
     const user = auth.currentUser;
@@ -126,7 +143,8 @@ const selectSection = (sec: string) => {
   return (
     <div style={styles.container}>
       {/* SIDEBAR */}
-    <div
+  <div
+  ref={sidebarRef}
   style={{
     ...styles.sidebar,
     transform: menuOpen
@@ -215,19 +233,19 @@ const styles: { [key: string]: React.CSSProperties } = {
 },
 menuBtn:{
   position:"fixed",
-  top:10,
+  top:12,
   left:15,
   zIndex:1100,
   background:"#222",
   color:"#fff",
   border:"none",
-  borderRadius:18,
-  padding:"10px 14px",
-  fontSize:18,
+  borderRadius:10,
+  padding:"12px",
+  fontSize:28,
   cursor:"pointer",
-  width: 30
+  width:55,
+  height:55,
 },
-
   scroll: {
     overflowY: "auto",
     padding: 12,
