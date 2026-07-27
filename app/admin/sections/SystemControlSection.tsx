@@ -9,7 +9,10 @@ type Transaction = {
   status: string;
   username?: string;
   publicId?: string;
+  userId?: string;
   user?: string;
+  method?: string;
+  currency?: string;
   amount: number;
   createdAt?: string | number | Date | null;
 };
@@ -103,20 +106,31 @@ useEffect(() => {
       {loading ? (
         <p style={{ color: "#fff" }}>Loading...</p>
       ) : (
-        <div>
-          {pendingTxs.map((t, i) => (
-            <div key={t.id} style={styles.row}>
-              <div style={styles.index}>{i + 1}.</div>
-            <div style={styles.txUser}>
-  {t.publicId || t.username || "Unknown"}
-</div>
-             <div style={styles.txAmount}>
-  {Number(t.amount || 0).toFixed(2)} $
-</div>
-              <div style={styles.txStatus}>{t.status}</div>
-            </div>
-          ))}
+       <div>
+  {pendingTxs.length === 0 ? (
+    <p style={{ color: "#888" }}>
+      No pending transactions
+    </p>
+  ) : (
+    pendingTxs.map((t, i) => (
+      <div key={t.id} style={styles.row}>
+        <div style={styles.index}>{i + 1}.</div>
+
+        <div style={styles.txUser}>
+          {t.publicId || t.username || "Unknown"}
         </div>
+
+        <div style={styles.txAmount}>
+          USD {Number(t.amount || 0).toFixed(2)} 
+        </div>
+
+        <div style={styles.txStatus}>
+          {t.status}
+        </div>
+      </div>
+    ))
+  )}
+</div>
       )}
     </div>
   );
