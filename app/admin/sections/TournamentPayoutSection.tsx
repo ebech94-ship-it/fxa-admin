@@ -171,16 +171,18 @@ const list: Participant[] = snap.docs.map((d) => {
 });
 
 const sortedParticipants = [...list].sort((a, b) => {
-  const startBalance = selectedTournament?.startingBalance ?? 0;
+  const startingBalance = Number(
+    selectedTournament?.startingBalance ?? 0
+  );
 
   const aPerformance =
     Number(a.balance ?? 0) -
-    Number(startBalance) -
+    startingBalance -
     Number(a.rebuyInjectedTotal ?? 0);
 
   const bPerformance =
     Number(b.balance ?? 0) -
-    Number(startBalance) -
+    startingBalance -
     Number(b.rebuyInjectedTotal ?? 0);
 
   return bPerformance - aPerformance;
