@@ -147,51 +147,43 @@ if(selectedTournamentId){
  const unsub = onSnapshot(q, (snap) => {
   const startBalance = selectedTournament.startingBalance ?? 0;
 
-  const list: Participant[] = snap.docs.map((d) => {
-    const data = d.data() as ParticipantDoc;
+const list: Participant[] = snap.docs.map((d) => {
+  const data = d.data() as ParticipantDoc;
 
-  
   return {
-  id: d.id,
-  ...data,
+    id: d.id,
+    ...data,
 
-  payoutStatus:
-    data.payoutStatus ??
-    (data.paidOut ? "paid" : "pending"),
+    payoutStatus:
+      data.payoutStatus ??
+      (data.paidOut ? "paid" : "pending"),
 
-  paidOut:
-    data.paidOut ?? false,
+    paidOut:
+      data.paidOut ?? false,
 
-  balance: Number(data.balance ?? 0),
+    balance: Number(data.balance ?? 0),
 
-  pnl:
-    data.performance?.pnl ?? 0,
-
-  roi:
-    data.performance?.roi ?? 0,
-
-  trades:
-    data.performance?.trades ?? 0,
-
-  winRate:
-    data.performance?.winRate ?? 0,
-};
-  });
+    pnl: data.performance?.pnl ?? 0,
+    roi: data.performance?.roi ?? 0,
+    trades: data.performance?.trades ?? 0,
+    winRate: data.performance?.winRate ?? 0,
+  };
+});
 
 const sortedParticipants = [...list].sort((a, b) => {
   const startBalance = selectedTournament?.startingBalance ?? 0;
 
-  const aScore =
-    (a.balance ?? 0) -
-    startBalance -
-    (a.rebuyInjectedTotal ?? 0);
+  const aPerformance =
+    Number(a.balance ?? 0) -
+    Number(startBalance) -
+    Number(a.rebuyInjectedTotal ?? 0);
 
-  const bScore =
-    (b.balance ?? 0) -
-    startBalance -
-    (b.rebuyInjectedTotal ?? 0);
+  const bPerformance =
+    Number(b.balance ?? 0) -
+    Number(startBalance) -
+    Number(b.rebuyInjectedTotal ?? 0);
 
-  return bScore - aScore;
+  return bPerformance - aPerformance;
 });
 
 setParticipants(sortedParticipants);
