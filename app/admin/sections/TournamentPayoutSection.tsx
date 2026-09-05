@@ -178,7 +178,8 @@ if(selectedTournamentId){
 };
   });
 
-const sortedParticipants = list.sort((a, b) => {
+const sortedParticipants = [...list].sort((a, b) => {
+  const startBalance = selectedTournament?.startingBalance ?? 0;
 
   const aScore =
     (a.balance ?? 0) -
@@ -194,7 +195,6 @@ const sortedParticipants = list.sort((a, b) => {
 });
 
 setParticipants(sortedParticipants);
-});
 
   return () => unsub();
 }, [selectedTournament]);
@@ -590,13 +590,17 @@ return (
         {formatNum(p.balance ?? 0)} T
       </div>
 
-     <div style={styles.performance}>
-  {(p.performance?.pnl ?? p.pnl ?? 0) >= 0
-    ? "+"
-    : ""}
-  {formatNum(
-    p.performance?.pnl ?? p.pnl ?? 0
-  )} T
+  <div style={styles.performance}>
+  {(() => {
+    const startBalance = selectedTournament?.startingBalance ?? 0;
+
+    const performance =
+      (p.balance ?? 0) -
+      startBalance -
+      (p.rebuyInjectedTotal ?? 0);
+
+    return `${performance >= 0 ? "+" : ""}${formatNum(performance)} T`;
+  })()}
 </div>
 
       <div style={styles.amount}>
