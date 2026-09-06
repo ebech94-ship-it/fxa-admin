@@ -133,6 +133,7 @@ if(selectedTournamentId){
   return () => unsub();
 }, [selectedTournamentId]); 
 
+
   // 🔹 Load participants
   useEffect(() => {
   if (!selectedTournament) return;
@@ -145,8 +146,6 @@ if(selectedTournamentId){
 );
 
  const unsub = onSnapshot(q, (snap) => {
-  const startBalance = selectedTournament.startingBalance ?? 0;
-
 const list: Participant[] = snap.docs.map((d) => {
   const data = d.data() as ParticipantDoc;
 
@@ -189,6 +188,7 @@ const sortedParticipants = [...list].sort((a, b) => {
 });
 
 setParticipants(sortedParticipants);
+  });
 
   return () => unsub();
 }, [selectedTournament]);
