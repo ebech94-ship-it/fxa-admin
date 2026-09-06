@@ -169,26 +169,10 @@ const list: Participant[] = snap.docs.map((d) => {
   };
 });
 
-const sortedParticipants = [...list].sort((a, b) => {
-  const startingBalance = Number(
-    selectedTournament?.startingBalance ?? 0
-  );
-
-  const aPerformance =
-    Number(a.balance ?? 0) -
-    startingBalance -
-    Number(a.rebuyInjectedTotal ?? 0);
-
-  const bPerformance =
-    Number(b.balance ?? 0) -
-    startingBalance -
-    Number(b.rebuyInjectedTotal ?? 0);
-
-  return bPerformance - aPerformance;
+ // DO NOT RE-RANK HERE.
+  // The app leaderboard is the source of truth.
+  setParticipants(list);
 });
-
-setParticipants(sortedParticipants);
-  });
 
   return () => unsub();
 }, [selectedTournament]);
