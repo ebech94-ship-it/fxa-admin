@@ -814,7 +814,7 @@ borderBottom:"1px solid #242424"
             </div>
 
             <div style={{ color: "#6A00FF" }}>
-              {p.performance.toFixed(2)}%
+              {p.performance.toFixed(2)}$
             </div>
           </div>
         ))

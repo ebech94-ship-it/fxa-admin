@@ -31,10 +31,12 @@ collectedFunds?: number;
 }
 interface Participant {
   id: string;
-
   username?: string;
-  publicId?: string;
 
+  startingBalance?: number;
+  rankingScore?: number;
+
+  publicId?: string;
   email?: string;
   phone?: string;
 
@@ -53,10 +55,12 @@ interface Participant {
     trades?: number;
     winRate?: number;
   };
+
   rebuyInjectedTotal?: number;
+
   prizeAmount?: number;
   payoutStatus?: "pending" | "paid" | "processing" | "failed";
-paidOut?: boolean;
+  paidOut?: boolean;
 }
 
 // 🔥 FIX: Firestore document types (no `any`)
@@ -135,47 +139,104 @@ if(selectedTournamentId){
 
 
   // 🔹 Load participants
-  useEffect(() => {
+ useEffect(() => {
   if (!selectedTournament) return;
 
- const q = collection(
-  db,
-  "tournaments",
-  selectedTournament.id,
-  "participants"
-);
+  const q = collection(
+    db,
+    "tournaments",
+    selectedTournament.id,
+    "participants"
+  );
 
- const unsub = onSnapshot(q, (snap) => {
-const list: Participant[] = snap.docs.map((d) => {
-  const data = d.data() as ParticipantDoc;
+  const unsub = onSnapshot(q, (snap) => {
 
-  return {
-    id: d.id,
-    ...data,
+    const list: Participant[] = snap.docs.map((d) => {
+      const data = d.data() as ParticipantDoc;
 
-    payoutStatus:
-      data.payoutStatus ??
-      (data.paidOut ? "paid" : "pending"),
+      const balance = Number(data.balance ?? 0);
 
-    paidOut:
-      data.paidOut ?? false,
+      // 🔥 IMPORTANT:
+      // Use the participant's ORIGINAL starting balance.
+      // If it does not exist on the participant document,
+      // fall back to the tournament starting balance.
+      const startingBalance = Number(
+        data.startingBalance ??
+        selectedTournament.startingBalance ??
+        0
+      );
 
-    balance: Number(data.balance ?? 0),
+      const rebuyInjectedTotal = Number(
+        data.rebuyInjectedTotal ?? 0
+      );
 
-    pnl: data.performance?.pnl ?? 0,
-    roi: data.performance?.roi ?? 0,
-    trades: data.performance?.trades ?? 0,
-    winRate: data.performance?.winRate ?? 0,
-  };
-});
+      // 🔥 THIS IS THE ACTUAL PERFORMANCE / PROFIT-LOSS
+      //
+      // Current Balance
+      // - Original Starting Balance
+      // - Total Rebuy Capital Injected
+      //
+      const performance =
+        balance -
+        startingBalance -
+        rebuyInjectedTotal;
 
- // DO NOT RE-RANK HERE.
-  // The app leaderboard is the source of truth.
-  setParticipants(list);
-});
+      return {
+        id: d.id,
+        ...data,
+
+        balance,
+
+        startingBalance,
+
+        rebuyInjectedTotal,
+
+        // 🔥 Ranking score MUST equal performance
+        rankingScore: performance,
+
+        payoutStatus:
+          data.payoutStatus ??
+          (data.paidOut ? "paid" : "pending"),
+
+        paidOut: data.paidOut ?? false,
+
+        pnl: data.performance?.pnl ?? 0,
+        roi: data.performance?.roi ?? 0,
+        trades: data.performance?.trades ?? 0,
+        winRate: data.performance?.winRate ?? 0,
+      };
+    });
+
+    // 🔥🔥🔥 RANKING: HIGHEST PERFORMANCE → LOWEST PERFORMANCE
+    //
+    // This is the leaderboard order.
+    //
+    const sortedParticipants = [...list].sort((a, b) => {
+      const performanceA = Number(a.rankingScore ?? 0);
+      const performanceB = Number(b.rankingScore ?? 0);
+
+      return performanceB - performanceA;
+    });
+
+    console.log(
+      "🔥 ADMIN LEADERBOARD:",
+      sortedParticipants.map((p, index) => ({
+        rank: index + 1,
+        player: p.username,
+        balance: p.balance,
+        startingBalance: p.startingBalance,
+        rebuyInjectedTotal: p.rebuyInjectedTotal,
+        performance: p.rankingScore,
+      }))
+    );
+
+    setParticipants(sortedParticipants);
+  });
 
   return () => unsub();
 }, [selectedTournament]);
+
+
 const processFullPayout = async () => {
   if (!selectedTournament) return;
 
@@ -522,111 +583,125 @@ return (
                 : "🚀 Process Full Payout"}
             </button>
           )}
-<div style={styles.tableHeaderRow}>
-  <div>🏅 Rank</div>
-  <div>👤 Player</div>
-  <div>🆔 ID</div>
-  <div>💰 Balance</div>
-  <div>📈 Performance</div>
-  <div>🎁 Prize</div>
-  <div>📌 Status</div>
-  <div>⚡ Action</div>
-</div>
-      {participants.map((p, i) => {
-  const rank = i + 1;
-  const payoutAmount = payoutMap[rank] ?? 0;
-
-  console.log("RANK LOOP:", {
-    index: i,
-    participantId: p.id,
-    pnl: p.pnl,
-    rank,
-  });
-
-  // skip if no payout defined for this rank
- if (rank > (selectedTournament?.payoutStructure?.length ?? 0)) {
-  return null;
-}
-
-  return (
-    <div key={p.id} style={styles.tableRow}>
-
-      <div style={styles.rank}>#{rank}</div>
-
-      <div style={styles.user}>
-        {p.username || "Unknown Player"}
-        <div style={{ fontSize: 11, color: "#888" }}>
-          FXA-ID-{p.id.slice(0, 6)}
-        </div>
-      </div>
-
-      <div style={styles.publicIdCell}>
-        {p.publicId || `FXA-${p.id.slice(0, 6)}`}
-      </div>
-
-      <div style={styles.cell}>
-        {formatNum(p.balance ?? 0)} T
-      </div>
-
-  <div style={styles.performance}>
-  {(() => {
-    const startBalance = selectedTournament?.startingBalance ?? 0;
-
-    const performance =
-      (p.balance ?? 0) -
-      startBalance -
-      (p.rebuyInjectedTotal ?? 0);
-
-    return `${performance >= 0 ? "+" : ""}${formatNum(performance)} T`;
-  })()}
-</div>
-
-      <div style={styles.amount}>
-        {formatNum(payoutAmount)} $
-      </div>
-
-      <div
-        style={{
-          ...styles.statusBadge,
-          color:
-            p.payoutStatus === "paid"
-              ? "#22c55e"
-              : p.payoutStatus === "processing"
-              ? "#3b82f6"
-              : p.payoutStatus === "failed"
-              ? "#ef4444"
-              : "#facc15",
-        }}
-      >
-        {p.payoutStatus === "paid"
-          ? "🟢 Paid"
-          : p.payoutStatus === "processing"
-          ? "🔵 Processing"
-          : p.payoutStatus === "failed"
-          ? "🔴 Failed"
-          : "🟡 Pending"}
-      </div>
-
-      <div style={styles.actions}>
-        <button
-          style={styles.viewBtn}
-          onClick={() => setSelectedParticipant(p)}
-        >
-          View
-        </button>
-
-        <button
-          style={styles.payBtn}
-          onClick={() => paySingleParticipant(p.id)}
-          disabled={p.payoutStatus === "paid" || payingId === p.id}
-        >
-          {payingId === p.id ? "Paying..." : "Pay"}
-        </button>
-      </div>
-
+          
+<div style={styles.tableScroll}>
+  <div style={styles.table}>
+    
+    <div style={styles.tableHeaderRow}>
+      <div>🏅 Rank</div>
+      <div>👤 Player</div>
+      <div>🆔 ID</div>
+      <div>💰 Balance</div>
+      <div>🔄 Rebuy</div>
+      <div>📈 Performance</div>
+      <div>🎁 Prize</div>
+      <div>📌 Status</div>
+      <div>⚡ Action</div>
     </div>
-  );
-})}
+
+    {participants.map((p, i) => {
+      const rank = i + 1;
+      const payoutAmount = payoutMap[rank] ?? 0;
+
+      if (
+        rank >
+        (selectedTournament?.payoutStructure?.length ?? 0)
+      ) {
+        return null;
+      }
+
+      return (
+        <div key={p.id} style={styles.tableRow}>
+
+          <div style={styles.rank}>
+            #{rank}
+          </div>
+
+          <div style={styles.user}>
+            {p.username || "Unknown Player"}
+            <div style={{ fontSize: 11, color: "#888" }}>
+              FXA-ID-{p.id.slice(0, 6)}
+            </div>
+          </div>
+
+          <div style={styles.publicIdCell}>
+            {p.publicId || `FXA-${p.id.slice(0, 6)}`}
+          </div>
+
+          <div style={styles.cell}>
+            {formatNum(p.balance ?? 0)} T
+          </div>
+
+          <div style={styles.rebuy}>
+            {p.rebuyInjectedTotal && p.rebuyInjectedTotal > 0
+              ? `-${formatNum(p.rebuyInjectedTotal)} T`
+              : "—"}
+          </div>
+
+          <div style={styles.performance}>
+            {(() => {
+              const performance = Number(
+                p.rankingScore ?? 0
+              );
+
+              return `${performance >= 0 ? "+" : ""}${formatNum(
+                performance
+              )} $`;
+            })()}
+          </div>
+
+          <div style={styles.amount}>
+            {formatNum(payoutAmount)} $
+          </div>
+
+          <div
+            style={{
+              ...styles.statusBadge,
+              color:
+                p.payoutStatus === "paid"
+                  ? "#22c55e"
+                  : p.payoutStatus === "processing"
+                  ? "#3b82f6"
+                  : p.payoutStatus === "failed"
+                  ? "#ef4444"
+                  : "#facc15",
+            }}
+          >
+            {p.payoutStatus === "paid"
+              ? "🟢 Paid"
+              : p.payoutStatus === "processing"
+              ? "🔵 Processing"
+              : p.payoutStatus === "failed"
+              ? "🔴 Failed"
+              : "🟡 Pending"}
+          </div>
+
+          <div style={styles.actions}>
+            <button
+              style={styles.viewBtn}
+              onClick={() => setSelectedParticipant(p)}
+            >
+              View
+            </button>
+
+            <button
+              style={styles.payBtn}
+              onClick={() => paySingleParticipant(p.id)}
+              disabled={
+                p.payoutStatus === "paid" ||
+                payingId === p.id
+              }
+            >
+              {payingId === p.id ? "Paying..." : "Pay"}
+            </button>
+          </div>
+
+        </div>
+      );
+    })}
+
+  </div>
+</div>
 
         </div>
       )}
@@ -731,6 +806,11 @@ const styles: Record<string, React.CSSProperties> = {
   marginBottom: 16,
   border: "1px solid #3b82f6",
 },
+rebuy: {
+  width: 140,
+  color: "#f59e0b",
+  fontWeight: 700,
+},
 
   row: {
     display: "flex",
@@ -827,24 +907,7 @@ publicIdCell: {
     borderRadius: 6,
     cursor: "pointer",
   },
-  tableHeaderRow: {
-  display: "grid",
-  gridTemplateColumns: "80px 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr",
-  color: "#999",
-  fontSize: 12,
-  padding: "8px 10px",
-  marginBottom: 6,
-},
-
-tableRow: {
-  display: "grid",
-  gridTemplateColumns: "70px 1.8fr 1fr 1fr 1fr 1fr 1fr 1fr",
-  background: "#12122a",
-  padding: 10,
-  borderRadius: 10,
-  marginBottom: 8,
-  alignItems: "center",
-},
+ 
   modalOverlay: {  position: "fixed",  top: 0,  left: 0,  right: 0,
   bottom: 0,  background: "rgba(0,0,0,0.7)",  display: "flex",
   alignItems: "center",  justifyContent: "center",  zIndex: 9999,
@@ -871,5 +934,39 @@ backBtn: {
   width: "100%",
   maxWidth: 260,
   boxShadow: "0 6px 18px rgba(59,130,246,0.3)",
+},
+tableScroll: {
+  width: "100%",
+  overflowX: "auto",
+  overflowY: "hidden",
+  WebkitOverflowScrolling: "touch",
+},
+
+table: {
+  minWidth: 1250,
+},
+
+tableHeaderRow: {
+  display: "grid",
+  gridTemplateColumns:
+    "70px 220px 150px 140px 140px 160px 120px 130px 150px",
+  color: "#999",
+  fontSize: 12,
+  fontWeight: 700,
+  padding: "10px 12px",
+  marginBottom: 6,
+  alignItems: "center",
+},
+
+tableRow: {
+  display: "grid",
+  gridTemplateColumns:
+    "70px 220px 150px 140px 140px 160px 120px 130px 150px",
+  background: "#12122a",
+  padding: "12px",
+  borderRadius: 10,
+  marginBottom: 8,
+  alignItems: "center",
+  minHeight: 58,
 },
 };
