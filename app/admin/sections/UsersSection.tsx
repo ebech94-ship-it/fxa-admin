@@ -263,35 +263,68 @@ if (user) {
 
   /* ---------------- UPDATE BALANCE ---------------- */
 
-  const updateBalance = async () => {
-    if (!selected) return;
+const updateBalance = async () => {
+  if (!selected) return;
 
-    setLoading(true);
+  const amount = Number(editBalance);
 
-    try {
-      const endpoint =
-        mode === "add"
-          ? `${BACKEND_URL}/admin/add-funds`
-          : `${BACKEND_URL}/admin/subtract-funds`;
+  if (!Number.isFinite(amount) || amount <= 0) {
+    alert("Enter a valid amount greater than zero.");
+    return;
+  }
 
-      await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selected.id,
-          amount: Number(editBalance),
-        }),
-      });
+  const currentUser = auth.currentUser;
 
-      alert("Success");
-      setOpen(false);
-      setEditBalance("");
-    } catch {
-      alert("Error updating balance");
+  if (!currentUser) {
+    alert("Please sign in again.");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const token = await currentUser.getIdToken();
+
+    const endpoint =
+      mode === "add"
+        ? `${BACKEND_URL}/admin/add-funds`
+        : `${BACKEND_URL}/admin/subtract-funds`;
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userId: selected.id,
+        amount,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || data.success === false || data.error) {
+      throw new Error(
+        data.error || data.message || `Request failed (${response.status})`
+      );
     }
 
+    alert("Balance adjustment request completed.");
+    setOpen(false);
+    setEditBalance("");
+  } catch (error) {
+    console.error("Balance update failed:", error);
+    alert(
+      error instanceof Error
+        ? `Balance update failed: ${error.message}`
+        : "Balance update failed."
+    );
+  } finally {
     setLoading(false);
-  };
+  }
+};
+
 const totalBalance = filtered.reduce(
   (sum, u) => sum + Number(u.balance || 0),
   0
